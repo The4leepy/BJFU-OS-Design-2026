@@ -1,0 +1,9 @@
+# 编译产物
+*.o
+os_sim
+
+# macOS
+.DS_Store
+
+# IDE
+.clangd

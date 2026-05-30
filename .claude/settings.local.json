@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 *)",
+      "Bash(make run *)",
+      "Bash(make clean *)",
+      "Bash(make)",
+      "Bash(./os_sim)",
+      "Bash(clang-tidy --version)",
+      "Bash(clang++ --version)",
+      "Bash(g++ --version)",
+      "Bash(clangd --version)",
+      "WebSearch",
+      "Bash(rtk git *)",
+      "Bash(git init *)"
+    ]
+  }
+}

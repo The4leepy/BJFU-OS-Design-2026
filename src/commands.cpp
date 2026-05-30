@@ -5,6 +5,7 @@
 #include <functional>
 #include "commands.h"
 #include "process.h"
+#include "memory.h"
 
 using Cmd_handler = std::function<void(std::vector<std::string>)>;
 
@@ -45,7 +46,10 @@ static struct _Init_Cmd {
         Cmd["suspend"] = {cmd_suspend_pcb, "Suspend a process"};
         Cmd["resume"] = {cmd_resume_pcb, "Resume a suspended process"};
         Cmd["ptree"] = {cmd_ptree, "Show process tree"};
-        Cmd["kill_pcb"] = {cmd_kill_pcb, "Kill process"};
+        Cmd["kill_pcb"]       = {cmd_kill_pcb, "Kill process"};
+        Cmd["set_alloc_algo"] = {cmd_set_alloc_algo, "Set memory allocation algorithm"};
+        Cmd["show_mem"]       = {cmd_show_mem, "Show memory map"};
+        Cmd["mem_stat"]       = {cmd_mem_stat, "Show memory statistics"};
     }
 } _init_Cmd;
 

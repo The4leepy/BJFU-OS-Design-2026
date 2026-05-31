@@ -4,6 +4,13 @@
 #include <string>
 #include "common.h"
 
+struct Proc_Mem_Blo {
+    int base;
+    int size;
+};
+
+int get_tol_size(const std::vector<Proc_Mem_Blo>&);
+
 struct PCB {
     int pid;
     int ppid;
@@ -11,8 +18,7 @@ struct PCB {
     Proc_State state;
     int priority;
 
-    int mem_base;
-    int mem_size;
+    std::vector<Proc_Mem_Blo> mem;
 
     int cpu_time;
 
@@ -34,7 +40,7 @@ struct PCB {
             return "State:    " + std::string(s);
         }
         if (tar == "priority") return "Priority: " + std::to_string(priority);
-        if (tar == "mem")     return "Memory:   " + std::to_string(mem_size) + " KB";
+        if (tar == "mem")     return "Memory:   " + std::to_string(get_tol_size(mem)) + " KB";
         if (tar == "cpu")     return "CPU Time: " + std::to_string(cpu_time);
         if (tar == "child") {
             std::string tmp;

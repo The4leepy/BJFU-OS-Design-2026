@@ -186,8 +186,7 @@ void cmd_alloc(const std::vector<std::string>& args) {
         return;
     }
 
-    cur->mem_base = fit_block->base;
-    cur->mem_size = req;
+    cur->mem.emplace_back(Proc_Mem_Blo{fit_block->base, req});
 
     auto it = std::find_if(Mem.begin(), Mem.end(),
         [&](MemBlock& b) { return &b == fit_block; });

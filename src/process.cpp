@@ -7,6 +7,12 @@
 static std::map<int, PCB> pcb_table;
 static int cur_pid = -1;
 
+int get_tol_size(const std::vector<Proc_Mem_Blo>& _mem) {
+    int tmp = 0;
+    for (auto [_base, _size] : _mem) tmp += _size;
+    return tmp;
+}
+
 static const char* state_name(Proc_State s) {
     switch (s) {
         case Proc_State::READY:     return "READY";
@@ -26,9 +32,6 @@ void init_processes() {
     pcb_table[cur_pid].name = "init";
     pcb_table[cur_pid].state = Proc_State::RUNNING;
     pcb_table[cur_pid].priority = 0;
-    
-    pcb_table[cur_pid].mem_base = 0;
-    pcb_table[cur_pid].mem_size = 0;
 
     pcb_table[cur_pid].cpu_time = 0;
 
@@ -74,13 +77,11 @@ void cmd_create_pcb(const std::vector<std::string>& args) {
     pcb_table[cur_pid].state = Proc_State::READY;
     pcb_table[cur_pid].priority = prio;
 
-    pcb_table[cur_pid].mem_base = -1;
-    pcb_table[cur_pid].mem_size = 0;
-
+    pcb_table[cur_pid].mem.clear();
     pcb_table[cur_pid].cpu_time = 0;
     pcb_table[cur_pid].child.clear();
 
-    pcb_table[0].child.push_back(cur_pid);
+    pcb_table[0].child.emplace_back(cur_pid);
 
     std::cout << "[OK] Process created: pid=" << cur_pid 
     << ", name=" << args[1] << ", priority=" << prio << "\n";
@@ -133,7 +134,7 @@ void cmd_list_pcb(const std::vector<std::string>&) {
                   << std::setw(12) << p.name
                   << std::setw(10) << state_name(p.state)
                   << std::setw(6)  << p.priority
-                  << std::setw(8)  << (std::to_string(p.mem_size) + "KB")
+                  << std::setw(8)  << (std::to_string(get_tol_size(p.mem)) + "KB")
                   << p.cpu_time << '\n';
     }
 }
@@ -276,7 +277,7 @@ void cmd_resume_pcb(const std::vector<std::string>& args) {
 static std::string ptree_node(PCB* p) {
     return p->name + "(" + std::to_string(p->pid) + ") [" +
            state_name(p->state) + ", prio=" + std::to_string(p->priority) +
-           ", mem=" + std::to_string(p->mem_size) + "KB]";
+           ", mem=" + std::to_string(get_tol_size(p->mem)) + "KB]";
 }
 
 static void print_tree(int pid, const std::string& prefix, bool is_last) {

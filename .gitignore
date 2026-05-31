@@ -1,13 +1,12 @@
-# 编译产物
+# 1. 编译产物
 *.o
 os_sim
+Makefile
 
-# macOS
-.DS_Store
-
-# IDE
-.clangd
-
+# 2. 忽略所有的 Markdown 说明文档
 *.md
 
-Makefile
+# 3. 精准忽略 macOS 和 IDE 缓存（不要用全局的 .*）
+.DS_Store
+.clangd
+.claude/

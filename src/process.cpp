@@ -59,7 +59,7 @@ void cmd_create_pcb(const std::vector<std::string>& args) {
     }
 
     int tried = 0;
-    while (pcb_table.find(cur_pid) != pcb_table.end()) {
+    while (find_pcb(cur_pid)) {
         cur_pid++;
         if (cur_pid >= MAX_PID) cur_pid = 0;
         if (++tried >= MAX_PID) {
@@ -99,14 +99,11 @@ void cmd_show_pcb(const std::vector<std::string>& args) {
         return;
     }
 
-    auto it = pcb_table.find(pid);
-
-    if (it == pcb_table.end()) {
+    PCB* cur = find_pcb(pid);
+    if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
-
-    PCB* cur = &it->second;
 
     if (args.size() == 2 || (args.size() >= 3 && args[2] == "all")) {
         const std::vector<std::string> buf = {"pid", "ppid", "name", "state", "priority",
@@ -161,19 +158,15 @@ void cmd_renice(const std::vector<std::string>& args) {
         return;        
     }
     
-    auto it = pcb_table.find(pid);
-
-    if (it != pcb_table.end()) {
-        PCB* cur = &it->second;
-        int _old = cur->priority;
-
-        cur->priority = prio;
-
-        std::cout << "[OK] Change process " << pid << " priority " 
-        << _old << " to " << prio << '\n';
-    } else {
+    PCB* cur = find_pcb(pid);
+    if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
+        return;
     }
+    int _old = cur->priority;
+    cur->priority = prio;
+    std::cout << "[OK] Change process " << pid << " priority "
+              << _old << " to " << prio << '\n';
 }
 
 void cmd_block_pcb(const std::vector<std::string>& args) {
@@ -189,19 +182,17 @@ void cmd_block_pcb(const std::vector<std::string>& args) {
         return;
     }
 
-    auto it = pcb_table.find(pid);
-
-    if (it != pcb_table.end()) {
-        PCB* cur = &it->second;
-        if (cur->state == Proc_State::BLOCKED) {
-            std::cout << "Process " << pid <<  " is already blocked\n";
-            return;
-        }
-        cur->state = Proc_State::BLOCKED;
-        std::cout << "[OK] Block process " << pid << '\n';
-    } else {
+    PCB* cur = find_pcb(pid);
+    if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
-    }    
+        return;
+    }
+    if (cur->state == Proc_State::BLOCKED) {
+        std::cout << "Process " << pid <<  " is already blocked\n";
+        return;
+    }
+    cur->state = Proc_State::BLOCKED;
+    std::cout << "[OK] Block process " << pid << '\n';
 }
 
 void cmd_wakeup_pcb(const std::vector<std::string>& args) {
@@ -217,19 +208,17 @@ void cmd_wakeup_pcb(const std::vector<std::string>& args) {
         return;
     }
 
-    auto it = pcb_table.find(pid);
-
-    if (it != pcb_table.end()) {
-        PCB* cur = &it->second;
-        if (cur->state != Proc_State::BLOCKED) {
-            std::cout << "Process " << pid << " is not blocked\n";
-            return;
-        }
-        cur->state = Proc_State::READY;
-        std::cout << "[OK] Wakeup process " << pid << '\n';
-    } else {
+    PCB* cur = find_pcb(pid);
+    if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
+        return;
     }
+    if (cur->state != Proc_State::BLOCKED) {
+        std::cout << "Process " << pid << " is not blocked\n";
+        return;
+    }
+    cur->state = Proc_State::READY;
+    std::cout << "[OK] Wakeup process " << pid << '\n';
 }
 
 void cmd_suspend_pcb(const std::vector<std::string>& args) {
@@ -245,19 +234,17 @@ void cmd_suspend_pcb(const std::vector<std::string>& args) {
         return;
     }
 
-    auto it = pcb_table.find(pid);
-
-    if (it != pcb_table.end()) {
-        PCB* cur = &it->second;
-        if (cur->state == Proc_State::SUSPENDED) {
-            std::cout << "Process " << pid << " already suspended\n";
-            return;
-        }
-        cur->state = Proc_State::SUSPENDED;
-        std::cout << "[OK] Suspend process " << pid << '\n';
-    } else {
+    PCB* cur = find_pcb(pid);
+    if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
+        return;
     }
+    if (cur->state == Proc_State::SUSPENDED) {
+        std::cout << "Process " << pid << " already suspended\n";
+        return;
+    }
+    cur->state = Proc_State::SUSPENDED;
+    std::cout << "[OK] Suspend process " << pid << '\n';
 }
 
 void cmd_resume_pcb(const std::vector<std::string>& args) {
@@ -273,19 +260,17 @@ void cmd_resume_pcb(const std::vector<std::string>& args) {
         return;
     }
 
-    auto it = pcb_table.find(pid);
-
-    if (it != pcb_table.end()) {
-        PCB* cur = &it->second;
-        if (cur->state != Proc_State::SUSPENDED) {
-            std::cout << "Process " << pid << " is not suspended\n";
-            return;
-        }
-        cur->state = Proc_State::READY;
-        std::cout << "[OK] Resume process " << pid << '\n';
-    } else {
+    PCB* cur = find_pcb(pid);
+    if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
-    }    
+        return;
+    }
+    if (cur->state != Proc_State::SUSPENDED) {
+        std::cout << "Process " << pid << " is not suspended\n";
+        return;
+    }
+    cur->state = Proc_State::READY;
+    std::cout << "[OK] Resume process " << pid << '\n';
 }
 
 static std::string ptree_node(PCB* p) {
@@ -310,7 +295,7 @@ static void print_tree(int pid, const std::string& prefix, bool is_last) {
 }
 
 void cmd_ptree(const std::vector<std::string>&) {
-    if (pcb_table.find(0) == pcb_table.end()) {
+    if (!find_pcb(0)) {
         std::cout << "No processes.\n";
     } else {
         print_tree(0, "", false);

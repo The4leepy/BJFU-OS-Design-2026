@@ -4,9 +4,11 @@
 #include <sstream>
 #include "commands.h"
 #include "process.h"
+#include "memory.h"
 
 int main() {
     init_processes();
+    init_memory();
     std::cout << "\033[3J\033[2J\033[H" << std::flush;
     std::cout << "========================================\n";
     std::cout << "  OS Core Simulator v1.0\n";

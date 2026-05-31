@@ -5,12 +5,14 @@
 #include <functional>
 #include "commands.h"
 #include "process.h"
+#include "memory.h"
 
 using Cmd_handler = std::function<void(std::vector<std::string>)>;
 
 struct CmdInfo {
     Cmd_handler handler;
     std::string desc;
+    std::string category;
 };
 
 static std::map<std::string, CmdInfo> Cmd;
@@ -25,27 +27,46 @@ static void cmd_clear(const std::vector<std::string>) {
 }
 
 static void cmd_help(const std::vector<std::string>) {
-    std::cout << "Available commands: \n";
-    for (const auto& [name, info] : Cmd) {
-        std::cout << name << " - "  << info.desc << '\n';
+    std::map<std::string, std::vector<std::pair<std::string, std::string>>> groups;
+    for (auto& [name, info] : Cmd)
+        groups[info.category].
+        emplace_back(std::pair<std::string , std::string>{name, info.desc});
+
+    std::map<std::string, std::string> titles = {
+        {"Process", "Process Commands"},
+        {"Memory",  "Memory Commands"},
+        {"System",  "System Commands"},
+    };
+
+    for (auto& [cat, cmds] : groups) {
+        std::cout << "\n=== " << titles[cat] << " ===\n";
+        for (auto& [name, desc] : cmds)
+            printf("  %-18s - %s\n", name.c_str(), desc.c_str());
     }
-    std::cout << "exit - Exit the simulator\n";
+    printf("\n  %-18s - %s\n", "exit", "Exit the simulator");
 }
 
 static struct _Init_Cmd {
     _Init_Cmd() {
-        Cmd["help"] = {cmd_help, "Show this help message"};
-        Cmd["clear"] = {cmd_clear, "Clear terminal"};
-        Cmd["create_pcb"] = {cmd_create_pcb, "Create a new process"};
-        Cmd["show_pcb"] = {cmd_show_pcb, "Show process pcb info"};
-        Cmd["list_pcb"] = {cmd_list_pcb, "List all processes"};
-        Cmd["renice"] = {cmd_renice, "Change process priority"};
-        Cmd["block_pcb"] = {cmd_block_pcb, "Block process"};
-        Cmd["wakeup_pcb"] = {cmd_wakeup_pcb, "Wakeup a blocked process"};
-        Cmd["suspend"] = {cmd_suspend_pcb, "Suspend a process"};
-        Cmd["resume"] = {cmd_resume_pcb, "Resume a suspended process"};
-        Cmd["ptree"] = {cmd_ptree, "Show process tree"};
-        Cmd["kill_pcb"] = {cmd_kill_pcb, "Kill process"};
+        // System
+        Cmd["help"]  = {cmd_help,  "Show this help message",          "System"};
+        Cmd["clear"] = {cmd_clear, "Clear terminal screen",          "System"};
+        // Process
+        Cmd["create_pcb"] = {cmd_create_pcb, "Create a new process",         "Process"};
+        Cmd["show_pcb"]   = {cmd_show_pcb,   "Show process details",         "Process"};
+        Cmd["list_pcb"]   = {cmd_list_pcb,   "List all processes",           "Process"};
+        Cmd["renice"]     = {cmd_renice,     "Change process priority",      "Process"};
+        Cmd["block_pcb"]  = {cmd_block_pcb,  "Block a process",              "Process"};
+        Cmd["wakeup_pcb"] = {cmd_wakeup_pcb, "Wake up a blocked process",    "Process"};
+        Cmd["suspend"]    = {cmd_suspend_pcb,"Suspend a process",            "Process"};
+        Cmd["resume"]     = {cmd_resume_pcb, "Resume a suspended process",   "Process"};
+        Cmd["ptree"]      = {cmd_ptree,      "Show process tree",            "Process"};
+        Cmd["kill_pcb"]   = {cmd_kill_pcb,   "Kill a process",               "Process"};
+        // Memory
+        Cmd["set_alloc_algo"] = {cmd_set_alloc_algo, "Set allocation algorithm", "Memory"};
+        Cmd["show_mem"]       = {cmd_show_mem,       "Show memory map",          "Memory"};
+        Cmd["mem_stat"]       = {cmd_mem_stat,       "Show memory statistics",   "Memory"};
+        Cmd["alloc"]          = {cmd_alloc,          "Allocate memory to process","Memory"};
     }
 } _init_Cmd;
 

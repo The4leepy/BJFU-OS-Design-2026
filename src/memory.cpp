@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <functional>
+#include <set>
 #include "memory.h"
 #include "process.h"
 
@@ -21,6 +22,21 @@ std::string get_algo_status() {
     else if (algo == Mem_Alloc_Algo::BEST_FIT) return "BEST_FIT";
     else return "WORST_FIT";
 }
+
+void Merge_Fre_Mem_Blo() {
+    for (auto it = Mem.begin(); it != Mem.end(); it++) {
+        auto ne = it;
+        ne++;
+
+        while (ne != Mem.end() && ne->is_free) {
+            it->size += ne->size;
+            Mem.erase(ne);
+            ne = it;
+            ne++;
+        }
+    }
+}
+
 
 void cmd_set_alloc_algo(const std::vector<std::string>& args) {
     if (args.size() < 2) {
@@ -186,8 +202,7 @@ void cmd_alloc(const std::vector<std::string>& args) {
         return;
     }
 
-    cur->mem_base = fit_block->base;
-    cur->mem_size = req;
+    cur->mem.emplace_back(Proc_Mem_Blo{fit_block->base, req});
 
     auto it = std::find_if(Mem.begin(), Mem.end(),
         [&](MemBlock& b) { return &b == fit_block; });
@@ -201,4 +216,130 @@ void cmd_alloc(const std::vector<std::string>& args) {
         Mem.erase(it);
 
     std::cout << "[OK] Allocated " << req << "KB to process " << pid << '\n';
+}
+
+void cmd_free_mem(const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        std::cout << "Usage: free_mem <pid>\n";
+        return;
+    }
+
+    int pid = std::stoi(args[1]);
+
+    if (pid < 0 || pid >= MAX_PID) {
+        std::cout << "Error: pid invalid\n";
+        return;
+    }
+    
+    PCB* cur = find_pcb(pid);
+
+    if (!cur) {
+        std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+
+    std::sort(cur->mem.begin(), cur->mem.end(), 
+    [](Proc_Mem_Blo& x, Proc_Mem_Blo& y) { return x.base < y.base; });
+
+    int tol_fr = 0;
+
+    for (auto tar : cur->mem) {
+        auto it = Mem.begin();
+        while (it->base != tar.base && it != Mem.end()) it++;
+        if (it == Mem.end()) break;
+        it->is_free = true;
+        it->owner_pid = -1;
+        tol_fr += it->size;
+    }
+
+    cur->mem.clear();
+
+    std::cout << "[OK] Free " << std::to_string(tol_fr) << 
+    "kb memory from process " << std::to_string(pid) << '\n';
+
+    Merge_Fre_Mem_Blo();
+}
+
+void cmd_compact(const std::vector<std::string>&) {
+    std::multiset<MemBlock> oc_bl;
+
+    for (auto it : Mem) {
+        if (!it.is_free) oc_bl.emplace(it);
+    }
+
+    int new_base = 0;
+
+    if (!oc_bl.empty()) {
+        Mem.clear();
+        for (auto it : oc_bl) {
+            int old_base = it.base;
+            it.base = new_base;
+            new_base += it.size;
+
+            PCB* it_owner = find_pcb(it.owner_pid);
+
+            auto owner_mem = 
+            std::find_if(it_owner->mem.begin(), 
+            it_owner->mem.end(), 
+            [&](Proc_Mem_Blo& x) { return x.base == old_base; });
+
+            owner_mem->base = it.base;
+
+            Mem.emplace_back(it);
+        }
+    }
+
+    int ne_base = Mem.back().base + Mem.back().size;
+
+
+    if (ne_base < TOTAL_MEM_KB) {
+        Mem.emplace_back(MemBlock{ne_base, 
+                   TOTAL_MEM_KB - ne_base, -1, 
+                true});
+    }
+    
+    std::cout << "[OK] Compact\n";
+}
+
+void cmd_pgfault(const std::vector<std::string>&) {
+    std::cout << "[INFO] Page fault triggered — page replacement would occur here\n";
+}
+
+void cmd_swap_out(const std::vector<std::string>& args) {
+    if (args.size() < 3) {
+        std::cout << "swap_out <pid> <size_kb>\n";
+        return;
+    }
+
+    int pid = std::stoi(args[1]);
+
+    if (pid < 0 || pid >= MAX_PID) {
+        std::cout << "Error: pid invalid\n";
+        return;
+    }
+    
+    PCB* cur = find_pcb(pid);
+
+    if (!cur) {
+        std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+
+    int tar_kb = std::stoi(args[2]);
+
+    std::sort(cur->mem.begin(), cur->mem.end(), 
+    [](Proc_Mem_Blo& x, Proc_Mem_Blo& y){ return x.size < y.size; } );
+
+    int swaped_kb = 0;
+    
+    for (auto& it : cur->mem) {
+        if (swaped_kb >= tar_kb) break;
+
+        it.is_swaped = 1;
+        it.base = -1;
+        swaped_kb += it.size;
+    }
+
+    std::cout << "[INFO] Swapped out"<< swaped_kb 
+    << "KB from process " << cur->name << "(" << std::to_string(pid) << ")\n";;
 }

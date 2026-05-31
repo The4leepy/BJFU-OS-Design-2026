@@ -67,6 +67,10 @@ static struct _Init_Cmd {
         Cmd["show_mem"]       = {cmd_show_mem,       "Show memory map",          "Memory"};
         Cmd["mem_stat"]       = {cmd_mem_stat,       "Show memory statistics",   "Memory"};
         Cmd["alloc"]          = {cmd_alloc,          "Allocate memory to process","Memory"};
+        Cmd["free_mem"]       = {cmd_free_mem,       "Free process memory",       "Memory"};
+        Cmd["compact"]        = {cmd_compact,        "Compact memory",             "Memory"};
+        Cmd["pgfault"]        = {cmd_pgfault,        "Simulate a page fault",      "Memory"};
+        Cmd["swap_out"]       = {cmd_swap_out,       "Swap out process memory",    "Memory"};
     }
 } _init_Cmd;
 

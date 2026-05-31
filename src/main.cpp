@@ -26,7 +26,7 @@ int main() {
         std::vector<std::string> args;
         
         std::string tmp;
-        while (ss >> tmp) args.push_back(tmp);
+        while (ss >> tmp) args.emplace_back(std::move(tmp));
 
         if (args[0] == "exit") {
             std::cout << "Bye bye." << std::endl;

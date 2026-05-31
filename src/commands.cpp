@@ -26,11 +26,19 @@ static void cmd_clear(const std::vector<std::string>) {
     std::cout << "========================================\n";
 }
 
-static void cmd_help(const std::vector<std::string>) {
+static void cmd_help(const std::vector<std::string>& args) {
+    std::string filter = "";
+
+    if (args.size() >= 2 && args[1] != "all")
+        filter = args[1];
+
+    if (!filter.empty())
+        filter[0] = std::toupper(filter[0]);
+
     std::map<std::string, std::vector<std::pair<std::string, std::string>>> groups;
     for (auto& [name, info] : Cmd)
-        groups[info.category].
-        emplace_back(std::pair<std::string , std::string>{name, info.desc});
+        if (filter.empty() || info.category == filter)
+            groups[info.category].emplace_back(name, info.desc);
 
     std::map<std::string, std::string> titles = {
         {"Process", "Process Commands"},
@@ -38,18 +46,25 @@ static void cmd_help(const std::vector<std::string>) {
         {"System",  "System Commands"},
     };
 
+    if (groups.empty() && !filter.empty()) {
+        std::cout << "No commands in category: " << args[1] << "\n";
+        return;
+    }
+
     for (auto& [cat, cmds] : groups) {
         std::cout << "\n=== " << titles[cat] << " ===\n";
         for (auto& [name, desc] : cmds)
             printf("  %-18s - %s\n", name.c_str(), desc.c_str());
     }
-    printf("\n  %-18s - %s\n", "exit", "Exit the simulator");
+
+    if (filter.empty())
+        printf("\n  %-18s - %s\n", "exit", "Exit the simulator");
 }
 
 static struct _Init_Cmd {
     _Init_Cmd() {
         // System
-        Cmd["help"]  = {cmd_help,  "Show this help message",          "System"};
+        Cmd["help"]  = {cmd_help,  "Show help [process|memory|system]", "System"};
         Cmd["clear"] = {cmd_clear, "Clear terminal screen",          "System"};
         // Process
         Cmd["create_pcb"] = {cmd_create_pcb, "Create a new process",         "Process"};

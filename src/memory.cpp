@@ -3,6 +3,9 @@
 #include <vector>
 #include <string>
 #include <list>
+#include <algorithm>
+#include <unordered_map>
+#include <functional>
 #include "memory.h"
 #include "process.h"
 
@@ -71,7 +74,6 @@ void cmd_show_mem(const std::vector<std::string>&) {
               << '\n';
     }
 
-    // 可视化横条
     std::cout << "\nMemory Map (0-" << TOTAL_MEM_KB << "KB):\n";
     const int W = 64;
     for (auto& b : Mem) {
@@ -87,6 +89,119 @@ void cmd_show_mem(const std::vector<std::string>&) {
 }
 
 void cmd_mem_stat(const std::vector<std::string>&) {
-    // TODO: 待实现
-    std::cout << "mem_stat: not yet implemented\n";
+    int tol_fr = 0;
+    int tol_al = 0;
+    int fr_blo = 0;
+    int max_fr_blo = 0;
+    for (auto& it : Mem) {
+        if (it.is_free) {
+            max_fr_blo = std::max(max_fr_blo, it.size);
+            tol_fr += it.size;
+            fr_blo++;
+        } else {
+            tol_al += it.size;
+        }
+    }
+
+    double frag_rate = (tol_fr > 0) ? (1.0 - 1.0 * max_fr_blo / tol_fr) : 0.0;
+
+    std::cout << "=== Memory Statistics ===\n"
+              << "Total:    " << TOTAL_MEM_KB << " KB\n"
+              << "Allocated:" << std::setw(5) << tol_al << " KB\n"
+              << "Free:     " << std::setw(5) << tol_fr << " KB\n"
+              << "Free blocks: " << fr_blo << "\n"
+              << "Largest free: " << max_fr_blo << " KB\n"
+              << "Fragmentation: " << std::fixed << std::setprecision(1)
+              << frag_rate * 100 << "%\n";
+}
+
+MemBlock* find_mem_ff(int req) {
+    for (auto& it : Mem) {
+        if (it.is_free && it.size >= req) return &it;
+    }
+    return nullptr;
+}
+
+using mem_find = std::function<MemBlock*(int)>;
+
+MemBlock* find_mem_bf(int req) {
+    MemBlock* fit = nullptr;
+
+    for (auto& it : Mem) {
+        if (it.is_free && it.size >= req && (!fit || fit->size > it.size))
+            fit = &it;
+    }
+
+    return fit;
+}
+
+MemBlock* find_mem_wf(int req) {
+    MemBlock* fit = nullptr;
+
+    for (auto& it : Mem) {
+        if (it.is_free && it.size >= req && (!fit || fit->size < it.size))
+            fit = &it;
+    }
+
+    return fit;
+}
+
+void cmd_alloc(const std::vector<std::string>& args) {
+    if (args.size() < 3) {
+        std::cout << "Usage: alloc <pid> <size_kb>\n";
+        return;
+    }
+
+    int pid = std::stoi(args[1]);
+
+    if (pid < 0 || pid >= MAX_PID) {
+        std::cout << "Error: pid invalid\n";
+        return;
+    }
+    
+    PCB* cur = find_pcb(pid);
+
+    if (!cur) {
+        std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+
+    int req = std::stoi(args[2]);
+
+    if (req > TOTAL_MEM_KB) {
+        std::cout << "Error: total memory " << TOTAL_MEM_KB << " kb\n";
+        return;
+    }
+
+    std::unordered_map<std::string, mem_find> algo_dispatch = {
+        {"FIRST_FIT", find_mem_ff},
+        {"BEST_FIT", find_mem_bf},
+        {"WORST_FIT", find_mem_wf}
+    };
+
+    MemBlock* fit_block = algo_dispatch[get_algo_status()](req);
+
+    if (!fit_block) {
+        std::cout << "Error: Not enough memory\n";
+        return;
+    }
+
+    cur->mem_base = fit_block->base;
+    cur->mem_size = req;
+
+    // 找到 fit_block 在链表中的位置
+    auto it = std::find_if(Mem.begin(), Mem.end(),
+        [&](MemBlock& b) { return &b == fit_block; });
+
+    // 在空闲块前面插入已分配块
+    Mem.emplace(it, MemBlock{fit_block->base, req, pid, false});
+
+    fit_block->base += req;
+    fit_block->size -= req;
+
+    // 如果正好分完，删掉空的空闲块
+    if (fit_block->size == 0)
+        Mem.erase(it);
+
+    std::cout << "[OK] Allocated " << req << "KB to process " << pid << '\n';
 }

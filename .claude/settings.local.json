@@ -12,7 +12,10 @@
       "Bash(clangd --version)",
       "WebSearch",
       "Bash(rtk git *)",
-      "Bash(git init *)"
+      "Bash(git init *)",
+      "Bash(rtk make *)",
+      "Bash(rtk grep *)",
+      "Bash(rtk read *)"
     ]
   }
 }

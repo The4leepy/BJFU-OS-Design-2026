@@ -17,3 +17,4 @@ void cmd_set_alloc_algo(const std::vector<std::string>&);
 void cmd_show_mem(const std::vector<std::string>&);
 
 void cmd_mem_stat(const std::vector<std::string>&);
+void cmd_alloc(const std::vector<std::string>&);

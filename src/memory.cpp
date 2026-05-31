@@ -245,7 +245,8 @@ void cmd_free_mem(const std::vector<std::string>& args) {
 
     for (auto tar : cur->mem) {
         auto it = Mem.begin();
-        while (it->base != tar.base) it++;
+        while (it->base != tar.base && it != Mem.end()) it++;
+        if (it == Mem.end()) break;
         it->is_free = true;
         it->owner_pid = -1;
         tol_fr += it->size;
@@ -298,4 +299,47 @@ void cmd_compact(const std::vector<std::string>&) {
     }
     
     std::cout << "[OK] Compact\n";
+}
+
+void cmd_pgfault(const std::vector<std::string>&) {
+    std::cout << "[INFO] Page fault triggered — page replacement would occur here\n";
+}
+
+void cmd_swap_out(const std::vector<std::string>& args) {
+    if (args.size() < 3) {
+        std::cout << "swap_out <pid> <size_kb>\n";
+        return;
+    }
+
+    int pid = std::stoi(args[1]);
+
+    if (pid < 0 || pid >= MAX_PID) {
+        std::cout << "Error: pid invalid\n";
+        return;
+    }
+    
+    PCB* cur = find_pcb(pid);
+
+    if (!cur) {
+        std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+
+    int tar_kb = std::stoi(args[2]);
+
+    std::sort(cur->mem.begin(), cur->mem.end(), 
+    [](Proc_Mem_Blo& x, Proc_Mem_Blo& y){ return x.size < y.size; } );
+
+    int swaped_kb = 0;
+    
+    for (auto& it : cur->mem) {
+        if (swaped_kb >= tar_kb) break;
+
+        it.is_swaped = 1;
+        it.base = -1;
+        swaped_kb += it.size;
+    }
+
+    std::cout << "[INFO] Swapped out"<< swaped_kb 
+    << "KB from process " << cur->name << "(" << std::to_string(pid) << ")\n";;
 }

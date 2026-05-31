@@ -7,6 +7,7 @@
 struct Proc_Mem_Blo {
     int base;
     int size;
+    bool is_swaped = 0;
 };
 
 int get_tol_size(const std::vector<Proc_Mem_Blo>&);

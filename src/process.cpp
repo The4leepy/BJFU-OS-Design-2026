@@ -9,7 +9,7 @@ static int cur_pid = -1;
 
 int get_tol_size(const std::vector<Proc_Mem_Blo>& _mem) {
     int tmp = 0;
-    for (auto [_base, _size] : _mem) tmp += _size;
+    for (auto [_base, _size, _] : _mem) tmp += _size;
     return tmp;
 }
 

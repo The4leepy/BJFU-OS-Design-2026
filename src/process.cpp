@@ -35,7 +35,7 @@ void init_processes() {
 
     pcb_table[cur_pid].cpu_time = 0;
 
-    pcb_table[cur_pid].child = {};
+    pcb_table[cur_pid].child.clear();
 }
 
 PCB* find_pcb(int pid) {

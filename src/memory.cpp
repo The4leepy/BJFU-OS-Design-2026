@@ -201,3 +201,54 @@ void cmd_alloc(const std::vector<std::string>& args) {
 
     std::cout << "[OK] Allocated " << req << "KB to process " << pid << '\n';
 }
+
+void cmd_free_mem(const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        std::cout << "Usage: free_mem <pid>\n";
+        return;
+    }
+
+    int pid = std::stoi(args[1]);
+
+    if (pid < 0 || pid >= MAX_PID) {
+        std::cout << "Error: pid invalid\n";
+        return;
+    }
+    
+    PCB* cur = find_pcb(pid);
+
+    if (!cur) {
+        std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+
+    std::sort(cur->mem.begin(), cur->mem.end(), 
+    [](Proc_Mem_Blo& x, Proc_Mem_Blo& y) { return x.base < y.base; });
+
+    int tol_fr = 0;
+
+    for (auto tar : cur->mem) {
+        auto it = Mem.begin();
+        while (it->base != tar.base) it++;
+        it->is_free = true;
+        it->owner_pid = -1;
+        tol_fr += it->size;
+    }
+
+    cur->mem.clear();
+
+    std::cout << "[OK] Free " << std::to_string(tol_fr) << 
+    "kb memory from process " << std::to_string(pid) << '\n';
+
+    for (auto it = Mem.begin(); it != Mem.end(); it++) {
+        auto ne = it;
+        ne++;
+
+        while (ne != Mem.end() && ne->is_free) {
+            it->size += ne->size;
+            Mem.erase(ne);
+            ne = it;
+            ne++;
+        }
+    }
+}

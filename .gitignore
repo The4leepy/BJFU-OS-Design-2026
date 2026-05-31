@@ -7,3 +7,7 @@ os_sim
 
 # IDE
 .clangd
+
+.md
+
+Makefile

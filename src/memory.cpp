@@ -189,17 +189,14 @@ void cmd_alloc(const std::vector<std::string>& args) {
     cur->mem_base = fit_block->base;
     cur->mem_size = req;
 
-    // 找到 fit_block 在链表中的位置
     auto it = std::find_if(Mem.begin(), Mem.end(),
         [&](MemBlock& b) { return &b == fit_block; });
 
-    // 在空闲块前面插入已分配块
     Mem.emplace(it, MemBlock{fit_block->base, req, pid, false});
 
     fit_block->base += req;
     fit_block->size -= req;
 
-    // 如果正好分完，删掉空的空闲块
     if (fit_block->size == 0)
         Mem.erase(it);
 

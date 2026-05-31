@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <functional>
+#include <set>
 #include "memory.h"
 #include "process.h"
 
@@ -21,6 +22,21 @@ std::string get_algo_status() {
     else if (algo == Mem_Alloc_Algo::BEST_FIT) return "BEST_FIT";
     else return "WORST_FIT";
 }
+
+void Merge_Fre_Mem_Blo() {
+    for (auto it = Mem.begin(); it != Mem.end(); it++) {
+        auto ne = it;
+        ne++;
+
+        while (ne != Mem.end() && ne->is_free) {
+            it->size += ne->size;
+            Mem.erase(ne);
+            ne = it;
+            ne++;
+        }
+    }
+}
+
 
 void cmd_set_alloc_algo(const std::vector<std::string>& args) {
     if (args.size() < 2) {
@@ -240,15 +256,46 @@ void cmd_free_mem(const std::vector<std::string>& args) {
     std::cout << "[OK] Free " << std::to_string(tol_fr) << 
     "kb memory from process " << std::to_string(pid) << '\n';
 
-    for (auto it = Mem.begin(); it != Mem.end(); it++) {
-        auto ne = it;
-        ne++;
+    Merge_Fre_Mem_Blo();
+}
 
-        while (ne != Mem.end() && ne->is_free) {
-            it->size += ne->size;
-            Mem.erase(ne);
-            ne = it;
-            ne++;
+void cmd_compact(const std::vector<std::string>&) {
+    std::multiset<MemBlock> oc_bl;
+
+    for (auto it : Mem) {
+        if (!it.is_free) oc_bl.emplace(it);
+    }
+
+    int new_base = 0;
+
+    if (!oc_bl.empty()) {
+        Mem.clear();
+        for (auto it : oc_bl) {
+            int old_base = it.base;
+            it.base = new_base;
+            new_base += it.size;
+
+            PCB* it_owner = find_pcb(it.owner_pid);
+
+            auto owner_mem = 
+            std::find_if(it_owner->mem.begin(), 
+            it_owner->mem.end(), 
+            [&](Proc_Mem_Blo& x) { return x.base == old_base; });
+
+            owner_mem->base = it.base;
+
+            Mem.emplace_back(it);
         }
     }
+
+    int ne_base = Mem.back().base + Mem.back().size;
+
+
+    if (ne_base < TOTAL_MEM_KB) {
+        Mem.emplace_back(MemBlock{ne_base, 
+                   TOTAL_MEM_KB - ne_base, -1, 
+                true});
+    }
+    
+    std::cout << "[OK] Compact\n";
 }

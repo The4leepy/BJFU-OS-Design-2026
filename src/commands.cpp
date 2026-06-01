@@ -19,6 +19,11 @@ struct CmdInfo {
 
 static std::unordered_map<std::string, CmdInfo> Cmd;
 
+static void cmd_exit(const std::vector<std::string>&) {
+    std::cout << "Bye bye.\n";
+    exit_requested = true;
+}
+
 static void cmd_clear(const std::vector<std::string>) {
     std::cout << "\033[3J\033[2J\033[H" << std::flush;
     std::cout << "========================================\n";
@@ -60,8 +65,6 @@ static void cmd_help(const std::vector<std::string>& args) {
             printf("  %-18s - %s\n", name.c_str(), desc.c_str());
     }
 
-    if (filter.empty())
-        printf("\n  %-18s - %s\n", "exit", "Exit the simulator");
 }
 
 static struct _Init_Cmd {
@@ -70,9 +73,11 @@ static struct _Init_Cmd {
         Cmd["register"] = {cmd_register, "Register a new user",       "User"};
         Cmd["login"]    = {cmd_login,    "Login to the system",       "User"};
         Cmd["logout"]   = {cmd_logout,   "Logout from the system",    "User"};
+        Cmd["sudo"]     = {cmd_sudo,     "Execute command as root",    "User"};
         // System
         Cmd["help"]  = {cmd_help,  "Show help [process|memory|system]", "System"};
         Cmd["clear"] = {cmd_clear, "Clear terminal screen",          "System"};
+        Cmd["exit"]  = {cmd_exit,  "Exit the simulator",             "System"};
         // Process
         Cmd["create_pcb"] = {cmd_create_pcb, "Create a new process",         "Process"};
         Cmd["show_pcb"]   = {cmd_show_pcb,   "Show process details",         "Process"};

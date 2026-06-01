@@ -14,10 +14,6 @@ int get_tol_size(const std::vector<Proc_Mem_Blo>& _mem) {
     return tmp;
 }
 
-static bool can_access(PCB* p) {
-    return current_user == "root" || p->owner_user == current_user;
-}
-
 static const char* state_name(Proc_State s) {
     switch (s) {
         case Proc_State::READY:     return "READY";

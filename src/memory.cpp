@@ -80,8 +80,8 @@ void cmd_show_mem(const std::vector<std::string>&) {
     for (auto& _mem : Mem) {
         std::string owner_name = "-";
         if (_mem.owner_pid >= 0) {
-            PCB* owner = find_pcb(_mem.owner_pid);
-            if (owner) owner_name = owner->name + "(" + std::to_string(_mem.owner_pid) + ")";
+            PCB* p = find_pcb(_mem.owner_pid);
+            if (p) owner_name = p->name + "(" + std::to_string(_mem.owner_pid) + ")";
         }
         std::cout << std::left
               << std::setw(9) << _mem.base
@@ -176,13 +176,13 @@ void cmd_alloc(const std::vector<std::string>& args) {
         return;
     }
     
-    PCB* cur = find_pcb(pid);
+    PCB* p = find_pcb(pid);
 
-    if (!cur) {
+    if (!p) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
-    if (!can_access(cur)) {
+    if (!can_access(p)) {
         std::cout << "Error: permission denied\n";
         return;
     }
@@ -207,7 +207,7 @@ void cmd_alloc(const std::vector<std::string>& args) {
         return;
     }
 
-    cur->mem.emplace_back(Proc_Mem_Blo{fit_block->base, req});
+    p->mem.emplace_back(Proc_Mem_Blo{fit_block->base, req});
 
     auto it = std::find_if(Mem.begin(), Mem.end(),
         [&](MemBlock& b) { return &b == fit_block; });
@@ -236,24 +236,24 @@ void cmd_free_mem(const std::vector<std::string>& args) {
         return;
     }
     
-    PCB* cur = find_pcb(pid);
+    PCB* p = find_pcb(pid);
 
-    if (!cur) {
+    if (!p) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
 
-    if (!can_access(cur)) {
+    if (!can_access(p)) {
         std::cout << "Error: permission denied\n";
         return;
     }
 
-    std::sort(cur->mem.begin(), cur->mem.end(),
+    std::sort(p->mem.begin(), p->mem.end(),
     [](Proc_Mem_Blo& x, Proc_Mem_Blo& y) { return x.base < y.base; });
 
     int tol_fr = 0;
 
-    for (const auto& tar : cur->mem) {
+    for (const auto& tar : p->mem) {
         auto it = Mem.begin();
         while (it->base != tar.base && it != Mem.end()) it++;
         if (it == Mem.end()) break;
@@ -262,7 +262,7 @@ void cmd_free_mem(const std::vector<std::string>& args) {
         tol_fr += it->size;
     }
 
-    cur->mem.clear();
+    p->mem.clear();
 
     std::cout << "[OK] Free " << std::to_string(tol_fr) << 
     "kb memory from process " << std::to_string(pid) << '\n';
@@ -286,11 +286,11 @@ void cmd_compact(const std::vector<std::string>&) {
             it.base = new_base;
             new_base += it.size;
 
-            PCB* it_owner = find_pcb(it.owner_pid);
+            PCB* p = find_pcb(it.owner_pid);
 
             auto owner_mem = 
-            std::find_if(it_owner->mem.begin(), 
-            it_owner->mem.end(), 
+            std::find_if(p->mem.begin(), 
+            p->mem.end(), 
             [&](Proc_Mem_Blo& x) { return x.base == old_base; });
 
             owner_mem->base = it.base;
@@ -328,26 +328,26 @@ void cmd_swap_out(const std::vector<std::string>& args) {
         return;
     }
     
-    PCB* cur = find_pcb(pid);
+    PCB* p = find_pcb(pid);
 
-    if (!cur) {
+    if (!p) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
     
-    if (!can_access(cur)) {
+    if (!can_access(p)) {
         std::cout << "Error: permission denied\n";
         return;
     }
 
     int tar_kb = std::stoi(args[2]);
 
-    std::sort(cur->mem.begin(), cur->mem.end(), 
+    std::sort(p->mem.begin(), p->mem.end(), 
     [](Proc_Mem_Blo& x, Proc_Mem_Blo& y){ return x.size < y.size; } );
 
     int swaped_kb = 0;
     
-    for (auto& it : cur->mem) {
+    for (auto& it : p->mem) {
         if (swaped_kb >= tar_kb) break;
 
         it.is_swaped = 1;
@@ -356,5 +356,5 @@ void cmd_swap_out(const std::vector<std::string>& args) {
     }
 
     std::cout << "[INFO] Swapped out"<< swaped_kb 
-    << "KB from process " << cur->name << "(" << std::to_string(pid) << ")\n";;
+    << "KB from process " << p->name << "(" << std::to_string(pid) << ")\n";;
 }

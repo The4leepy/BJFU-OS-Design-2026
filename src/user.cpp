@@ -132,12 +132,14 @@ void cmd_login(const std::vector<std::string>& args) {
         return;
     }    
 
+    int tries = 0;
+
     if (users[args[1]].password != args[2]) {
-        users[args[1]].failed++;
+        tries++;
 
         std::cout << "Error: Incorrect password\n";
 
-        if (users[args[1]].failed >= MAX_LOGIN_ATTEMPTS) {
+        if (tries >= MAX_LOGIN_ATTEMPTS) {
             users[args[1]].locked = true;
 
             std::cout << "\nInfo: User " << args[1] << " locked\n\n";
@@ -145,7 +147,7 @@ void cmd_login(const std::vector<std::string>& args) {
             return;
         }
 
-        std::cout << "\nInfo: " << MAX_LOGIN_ATTEMPTS - users[args[1]].failed
+        std::cout << "\nInfo: " << MAX_LOGIN_ATTEMPTS - tries
                   << " chances left\n\n";
 
         return;

@@ -6,7 +6,6 @@
 
 struct User {
     std::string password;
-    int failed = 0;
     bool locked = false;
 };
 

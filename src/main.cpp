@@ -5,8 +5,10 @@
 #include "commands.h"
 #include "process.h"
 #include "memory.h"
+#include "user.h"
 
 int main() {
+    init_users();
     init_processes();
     init_memory();
     std::cout << "\033[3J\033[2J\033[H" << std::flush;
@@ -31,6 +33,13 @@ int main() {
         if (args[0] == "exit") {
             std::cout << "Bye bye." << std::endl;
             break;
+        }
+
+        if (current_user.empty()) {
+            if (args[0] != "help" && args[0] != "register" && args[0] != "login") {
+                std::cout << "Please login first.\n";
+                continue;
+            }
         }
 
         dispatch(args);

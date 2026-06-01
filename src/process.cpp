@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include "process.h"
 #include "common.h"
+#include "user.h"
 
 static std::unordered_map<int, PCB> pcb_table;
 static int cur_pid = -1;
@@ -11,6 +12,10 @@ int get_tol_size(const std::vector<Proc_Mem_Blo>& _mem) {
     int tmp = 0;
     for (auto [_base, _size, _] : _mem) tmp += _size;
     return tmp;
+}
+
+static bool can_access(PCB* p) {
+    return current_user == "root" || p->owner_user == current_user;
 }
 
 static const char* state_name(Proc_State s) {
@@ -32,6 +37,7 @@ void init_processes() {
     pcb_table[cur_pid].name = "init";
     pcb_table[cur_pid].state = Proc_State::RUNNING;
     pcb_table[cur_pid].priority = 0;
+    pcb_table[cur_pid].owner_user = "root";
 
     pcb_table[cur_pid].cpu_time = 0;
 
@@ -77,6 +83,8 @@ void cmd_create_pcb(const std::vector<std::string>& args) {
     pcb_table[cur_pid].state = Proc_State::READY;
     pcb_table[cur_pid].priority = prio;
 
+    pcb_table[cur_pid].owner_user = current_user;
+
     pcb_table[cur_pid].mem.clear();
     pcb_table[cur_pid].cpu_time = 0;
     pcb_table[cur_pid].child.clear();
@@ -105,6 +113,10 @@ void cmd_show_pcb(const std::vector<std::string>& args) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
 
     if (args.size() == 2 || (args.size() >= 3 && args[2] == "all")) {
         const std::vector<std::string> buf = {"pid", "ppid", "name", "state", "priority",
@@ -129,6 +141,7 @@ void cmd_list_pcb(const std::vector<std::string>&) {
               << "CPU\n"
               << std::string(48, '-') << '\n';
     for (const auto& [_, p] : pcb_table) {
+        if (current_user != "root" && p.owner_user != current_user) continue;
         std::cout << std::left
                   << std::setw(6)  << p.pid
                   << std::setw(12) << p.name
@@ -164,6 +177,10 @@ void cmd_renice(const std::vector<std::string>& args) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
     int _old = cur->priority;
     cur->priority = prio;
     std::cout << "[OK] Change process " << pid << " priority "
@@ -186,6 +203,10 @@ void cmd_block_pcb(const std::vector<std::string>& args) {
     PCB* cur = find_pcb(pid);
     if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
         return;
     }
     if (cur->state == Proc_State::BLOCKED) {
@@ -214,6 +235,10 @@ void cmd_wakeup_pcb(const std::vector<std::string>& args) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
     if (cur->state != Proc_State::BLOCKED) {
         std::cout << "Process " << pid << " is not blocked\n";
         return;
@@ -238,6 +263,10 @@ void cmd_suspend_pcb(const std::vector<std::string>& args) {
     PCB* cur = find_pcb(pid);
     if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
         return;
     }
     if (cur->state == Proc_State::SUSPENDED) {
@@ -266,6 +295,10 @@ void cmd_resume_pcb(const std::vector<std::string>& args) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
     if (cur->state != Proc_State::SUSPENDED) {
         std::cout << "Process " << pid << " is not suspended\n";
         return;
@@ -283,6 +316,7 @@ static std::string ptree_node(PCB* p) {
 static void print_tree(int pid, const std::string& prefix, bool is_last) {
     PCB* cur = find_pcb(pid);
     if (!cur) return;
+    if (current_user != "root" && cur->owner_user != current_user) return;
 
     std::cout << prefix;
     if (pid != 0)
@@ -334,6 +368,7 @@ void cmd_kill_pcb(const std::vector<std::string>& args) {
     PCB* cur = find_pcb(pid);
 
     if (!cur) std::cout << "No process.\n";
+    else if (!can_access(cur)) std::cout << "Error: permission denied\n";
     else {
         run_kill(pid);
         std::cout << "[OK] Killed process " << pid << '\n';

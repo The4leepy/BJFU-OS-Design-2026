@@ -7,6 +7,7 @@
 #include "commands.h"
 #include "process.h"
 #include "memory.h"
+#include "user.h"
 
 using Cmd_handler = std::function<void(std::vector<std::string>)>;
 
@@ -42,6 +43,7 @@ static void cmd_help(const std::vector<std::string>& args) {
             groups[info.category].emplace_back(name, info.desc);
 
     std::map<std::string, std::string> titles = {
+        {"User",    "User Commands"},
         {"Process", "Process Commands"},
         {"Memory",  "Memory Commands"},
         {"System",  "System Commands"},
@@ -64,6 +66,10 @@ static void cmd_help(const std::vector<std::string>& args) {
 
 static struct _Init_Cmd {
     _Init_Cmd() {
+        // User
+        Cmd["register"] = {cmd_register, "Register a new user",       "User"};
+        Cmd["login"]    = {cmd_login,    "Login to the system",       "User"};
+        Cmd["logout"]   = {cmd_logout,   "Logout from the system",    "User"};
         // System
         Cmd["help"]  = {cmd_help,  "Show help [process|memory|system]", "System"};
         Cmd["clear"] = {cmd_clear, "Clear terminal screen",          "System"};

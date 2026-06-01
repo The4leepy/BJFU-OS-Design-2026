@@ -1,10 +1,10 @@
 #include <iostream>
 #include <iomanip>
-#include <map>
+#include <unordered_map>
 #include "process.h"
 #include "common.h"
 
-static std::map<int, PCB> pcb_table;
+static std::unordered_map<int, PCB> pcb_table;
 static int cur_pid = -1;
 
 int get_tol_size(const std::vector<Proc_Mem_Blo>& _mem) {

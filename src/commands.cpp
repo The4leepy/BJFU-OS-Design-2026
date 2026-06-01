@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <functional>
 #include "commands.h"
 #include "process.h"
@@ -15,7 +16,7 @@ struct CmdInfo {
     std::string category;
 };
 
-static std::map<std::string, CmdInfo> Cmd;
+static std::unordered_map<std::string, CmdInfo> Cmd;
 
 static void cmd_clear(const std::vector<std::string>) {
     std::cout << "\033[3J\033[2J\033[H" << std::flush;

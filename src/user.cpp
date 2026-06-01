@@ -1,0 +1,168 @@
+#include <iostream>
+#include <limits>
+#include <vector>
+#include <string>
+#include "commands.h"
+#include "process.h"
+#include "user.h"
+
+bool can_access(PCB* p) {
+    return current_user == "root" || sudo_active ||
+           p->owner_user == current_user;
+}
+
+void cmd_sudo(const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        std::cout << "Usage: sudo <su|command>\n";
+        return;
+    }
+
+    if (current_user == "root") {
+        if (args[1] == "su") {
+            std::cout << "Already root.\n";
+            return;
+        }
+
+        std::vector<std::string> sub(args.begin() + 1, args.end());
+
+        dispatch(sub);
+
+        return;
+    }
+
+    int tries = 0;
+    std::string psd;
+
+    while (tries < MAX_LOGIN_ATTEMPTS) {
+        std::cout << "Password: ";
+        std::cin >> psd;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (psd == users["root"].password) break;
+        tries++;
+
+        if (tries < MAX_LOGIN_ATTEMPTS)
+            std::cout << "Incorrect (" << MAX_LOGIN_ATTEMPTS - tries
+                      << " left)\n";
+    }
+
+    if (tries >= MAX_LOGIN_ATTEMPTS) {
+        std::cout << "Too many attempts.\n";
+        return;
+    }
+
+    if (args[1] == "su") {
+        current_user = "root";
+        std::cout << "[OK] Switched to root\n";
+        return;
+    }
+
+    sudo_active = true;
+    std::vector<std::string> sub(args.begin() + 1, args.end());
+
+    dispatch(sub);
+    
+    sudo_active = false;
+}
+
+void init_users() {
+    users["root"].password = "";
+    current_user = "root";
+}
+
+void first_time_setup() {
+    std::cout << "\033[3J\033[2J\033[H" << std::flush;
+    
+    if (!users["root"].password.empty()) return;
+
+    std::cout << "=== First-time setup ===\n";
+    std::cout << "Please set root password: ";
+
+    std::string root_psd;
+
+    while (root_psd.empty()) {
+        std::cin >> root_psd;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (root_psd.empty())
+            std::cout << "Info: root password cannot be empty\n";
+    }
+
+    users["root"].password = root_psd;
+    
+    std::cout << "[OK] Root password set.\n";
+}
+
+void cmd_register(const std::vector<std::string>& args) {
+    if (current_user != "root") {
+        std::cout << "ERROR: Only the root user can register\n";
+        return;
+    }
+
+    if (args.size() < 3) {
+        std::cout << "Usage: cmd_register <username> <password>\n";
+        return;
+    }
+
+    if (users.find(args[1]) != users.end()) {
+        std::cout << "Error: already exists\n";
+        return;
+    }
+
+    users[args[1]].password = args[2];
+
+    current_user = args[1];
+
+    std::cout << "[OK] Registered user " << args[1] << '\n';
+}
+
+void cmd_login(const std::vector<std::string>& args) {
+    if (args.size() < 3) {
+        std::cout << "Usage: cmd_login <username> <password>\n";
+        return;
+    }
+
+    if (users.find(args[1]) == users.end()) {
+        std::cout << "Error: User does not exist\n";
+        return;
+    }
+
+    if (users[args[1]].locked) {
+        std::cout << "\nInfo: User " << args[1] << " locked\n\n";
+        return;
+    }    
+
+    if (users[args[1]].password != args[2]) {
+        users[args[1]].failed++;
+
+        std::cout << "Error: Incorrect password\n";
+
+        if (users[args[1]].failed >= MAX_LOGIN_ATTEMPTS) {
+            users[args[1]].locked = true;
+
+            std::cout << "\nInfo: User " << args[1] << " locked\n\n";
+            
+            return;
+        }
+
+        std::cout << "\nInfo: " << MAX_LOGIN_ATTEMPTS - users[args[1]].failed
+                  << " chances left\n\n";
+
+        return;
+    }
+
+    current_user = args[1];
+
+    std::cout << "[OK] User " << args[1] << ", welcome!\n";
+}
+
+void cmd_logout(const std::vector<std::string>&) {
+    if (current_user == "root") {
+        std::cout << "Error: Root user cannot log out\n";
+        return;
+    }
+
+    current_user = "root";
+
+    std::cout << "[OK] Log out\n";
+}

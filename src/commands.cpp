@@ -2,10 +2,12 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <functional>
 #include "commands.h"
 #include "process.h"
 #include "memory.h"
+#include "user.h"
 
 using Cmd_handler = std::function<void(std::vector<std::string>)>;
 
@@ -15,7 +17,12 @@ struct CmdInfo {
     std::string category;
 };
 
-static std::map<std::string, CmdInfo> Cmd;
+static std::unordered_map<std::string, CmdInfo> Cmd;
+
+static void cmd_exit(const std::vector<std::string>&) {
+    std::cout << "Bye bye.\n";
+    exit_requested = true;
+}
 
 static void cmd_clear(const std::vector<std::string>) {
     std::cout << "\033[3J\033[2J\033[H" << std::flush;
@@ -26,31 +33,51 @@ static void cmd_clear(const std::vector<std::string>) {
     std::cout << "========================================\n";
 }
 
-static void cmd_help(const std::vector<std::string>) {
+static void cmd_help(const std::vector<std::string>& args) {
+    std::string filter = "";
+
+    if (args.size() >= 2 && args[1] != "all")
+        filter = args[1];
+
+    if (!filter.empty())
+        filter[0] = std::toupper(filter[0]);
+
     std::map<std::string, std::vector<std::pair<std::string, std::string>>> groups;
     for (auto& [name, info] : Cmd)
-        groups[info.category].
-        emplace_back(std::pair<std::string , std::string>{name, info.desc});
+        if (filter.empty() || info.category == filter)
+            groups[info.category].emplace_back(name, info.desc);
 
     std::map<std::string, std::string> titles = {
+        {"User",    "User Commands"},
         {"Process", "Process Commands"},
         {"Memory",  "Memory Commands"},
         {"System",  "System Commands"},
     };
+
+    if (groups.empty() && !filter.empty()) {
+        std::cout << "No commands in category: " << args[1] << "\n";
+        return;
+    }
 
     for (auto& [cat, cmds] : groups) {
         std::cout << "\n=== " << titles[cat] << " ===\n";
         for (auto& [name, desc] : cmds)
             printf("  %-18s - %s\n", name.c_str(), desc.c_str());
     }
-    printf("\n  %-18s - %s\n", "exit", "Exit the simulator");
+
 }
 
 static struct _Init_Cmd {
     _Init_Cmd() {
+        // User
+        Cmd["register"] = {cmd_register, "Register a new user",       "User"};
+        Cmd["login"]    = {cmd_login,    "Login to the system",       "User"};
+        Cmd["logout"]   = {cmd_logout,   "Logout from the system",    "User"};
+        Cmd["sudo"]     = {cmd_sudo,     "Execute command as root",    "User"};
         // System
-        Cmd["help"]  = {cmd_help,  "Show this help message",          "System"};
+        Cmd["help"]  = {cmd_help,  "Show help [process|memory|system]", "System"};
         Cmd["clear"] = {cmd_clear, "Clear terminal screen",          "System"};
+        Cmd["exit"]  = {cmd_exit,  "Exit the simulator",             "System"};
         // Process
         Cmd["create_pcb"] = {cmd_create_pcb, "Create a new process",         "Process"};
         Cmd["show_pcb"]   = {cmd_show_pcb,   "Show process details",         "Process"};

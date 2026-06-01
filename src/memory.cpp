@@ -9,6 +9,7 @@
 #include <set>
 #include "memory.h"
 #include "process.h"
+#include "user.h"
 
 static std::list<MemBlock> Mem;
 static Mem_Alloc_Algo algo = Mem_Alloc_Algo::FIRST_FIT;
@@ -181,6 +182,10 @@ void cmd_alloc(const std::vector<std::string>& args) {
         std::cout << "Error: process " << pid << " not found\n";
         return;
     }
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
 
     int req = std::stoi(args[2]);
 
@@ -238,12 +243,17 @@ void cmd_free_mem(const std::vector<std::string>& args) {
         return;
     }
 
-    std::sort(cur->mem.begin(), cur->mem.end(), 
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
+
+    std::sort(cur->mem.begin(), cur->mem.end(),
     [](Proc_Mem_Blo& x, Proc_Mem_Blo& y) { return x.base < y.base; });
 
     int tol_fr = 0;
 
-    for (auto tar : cur->mem) {
+    for (const auto& tar : cur->mem) {
         auto it = Mem.begin();
         while (it->base != tar.base && it != Mem.end()) it++;
         if (it == Mem.end()) break;
@@ -263,8 +273,8 @@ void cmd_free_mem(const std::vector<std::string>& args) {
 void cmd_compact(const std::vector<std::string>&) {
     std::multiset<MemBlock> oc_bl;
 
-    for (auto it : Mem) {
-        if (!it.is_free) oc_bl.emplace(it);
+    for (const auto& b : Mem) {
+        if (!b.is_free) oc_bl.emplace(b);
     }
 
     int new_base = 0;
@@ -322,6 +332,11 @@ void cmd_swap_out(const std::vector<std::string>& args) {
 
     if (!cur) {
         std::cout << "Error: process " << pid << " not found\n";
+        return;
+    }
+    
+    if (!can_access(cur)) {
+        std::cout << "Error: permission denied\n";
         return;
     }
 

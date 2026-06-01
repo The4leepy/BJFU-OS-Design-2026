@@ -19,6 +19,8 @@ struct PCB {
     Proc_State state;
     int priority;
 
+    std::string owner_user;
+
     std::vector<Proc_Mem_Blo> mem;
 
     int cpu_time;

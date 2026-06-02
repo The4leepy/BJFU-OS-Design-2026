@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <fstream>
 
 struct User {
     std::string password;
@@ -30,3 +31,7 @@ void cmd_login(const std::vector<std::string>&);
 void cmd_logout(const std::vector<std::string>&);
 
 void cmd_sudo(const std::vector<std::string>&);
+
+void save_users(std::ofstream&);
+
+void load_users(std::ifstream&);

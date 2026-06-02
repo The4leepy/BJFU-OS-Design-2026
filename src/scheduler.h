@@ -4,6 +4,9 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <fstream>
+#include <vector>
+#include <string>
 
 constexpr int Q_COUNT = 3;
 constexpr int Q_RANGES[3][2] = {{0, 3}, {4, 7}, {8, 15}};
@@ -30,3 +33,7 @@ void cmd_start(const std::vector<std::string>&);
 void cmd_stop(const std::vector<std::string>&);
 
 void cmd_restart(const std::vector<std::string>&);
+
+void save_scheduler(std::ofstream&);
+
+void load_scheduler(std::ifstream&);

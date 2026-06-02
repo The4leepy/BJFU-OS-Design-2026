@@ -4,6 +4,7 @@
 #include "commands.h"
 #include "process.h"
 #include "user.h"
+#include "persistence.h"
 
 bool can_access(const PCB* p) {
     return current_user == "root" || sudo_active ||
@@ -164,4 +165,37 @@ void cmd_logout(const std::vector<std::string>&) {
     current_user = "root";
 
     std::cout << "[OK] Logged out\n";
+}
+
+void save_users(std::ofstream& f) {
+    int sz = static_cast<int>(users.size());
+    f.write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+
+    for (const auto& [name, u] : users) {
+        write_str(f, name);
+        write_str(f, u.password);
+        char locked_flag = u.locked ? 1 : 0;
+        f.write(&locked_flag, 1);
+    }
+    write_str(f, current_user);
+    char sudo_flag = sudo_active ? 1 : 0;
+    f.write(&sudo_flag, 1);
+}
+
+void load_users(std::ifstream& f) {
+    users.clear();
+    int sz = 0;
+    f.read(reinterpret_cast<char*>(&sz), sizeof(sz));
+    
+    for (int i = 0; i < sz; i++) {
+        std::string name = read_str(f);
+        std::string pass = read_str(f);
+        char locked_flag;
+        f.read(&locked_flag, 1);
+        users[name] = {pass, locked_flag != 0};
+    }
+    current_user = read_str(f);
+    char sudo_flag;
+    f.read(&sudo_flag, 1);
+    sudo_active = (sudo_flag != 0);
 }

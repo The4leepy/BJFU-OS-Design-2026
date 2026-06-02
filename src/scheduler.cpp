@@ -17,17 +17,6 @@ void init_scheduler() {
     running_pid = 0;
 }
 
-void scheduler_tick();
-
-static void sched_loop() {
-    while (sched_running) {
-        sched_mtx.lock();
-        scheduler_tick();
-        sched_mtx.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-} 
-
 void sched_enqueue(int pid) {
     if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
@@ -153,6 +142,15 @@ void cmd_step(const std::vector<std::string>&) {
     }
 }
 
+static void sched_loop() {
+    while (sched_running) {
+        sched_mtx.lock();
+        scheduler_tick();
+        sched_mtx.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+} 
+
 void cmd_start(const std::vector<std::string>&) {
     if (sched_running) {
         std::cout << "[INFO] Scheduler is already running\n";
@@ -180,4 +178,32 @@ void cmd_stop(const std::vector<std::string>&) {
 void cmd_restart(const std::vector<std::string>&) {
     cmd_stop({});
     cmd_start({});
+}
+
+void save_scheduler(std::ofstream& f) {
+    f.write(reinterpret_cast<const char*>(&total_ticks), sizeof(total_ticks));
+    f.write(reinterpret_cast<const char*>(&running_pid), sizeof(running_pid));
+    f.write(reinterpret_cast<const char*>(&ticks_left),  sizeof(ticks_left));
+    for (int q = 0; q < Q_COUNT; q++) {
+        int sz = static_cast<int>(queues[q].size());
+        f.write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+        for (int pid : queues[q])
+            f.write(reinterpret_cast<const char*>(&pid), sizeof(pid));
+    }
+}
+
+void load_scheduler(std::ifstream& f) {
+    f.read(reinterpret_cast<char*>(&total_ticks), sizeof(total_ticks));
+    f.read(reinterpret_cast<char*>(&running_pid), sizeof(running_pid));
+    f.read(reinterpret_cast<char*>(&ticks_left),  sizeof(ticks_left));
+    for (int q = 0; q < Q_COUNT; q++) {
+        queues[q].clear();
+        int sz = 0;
+        f.read(reinterpret_cast<char*>(&sz), sizeof(sz));
+        for (int i = 0; i < sz; i++) {
+            int pid;
+            f.read(reinterpret_cast<char*>(&pid), sizeof(pid));
+            queues[q].push_back(pid);
+        }
+    }
 }

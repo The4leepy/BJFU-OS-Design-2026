@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "user.h"
 #include "scheduler.h"
+#include "persistence.h"
 
 using Cmd_handler = std::function<void(std::vector<std::string>)>;
 
@@ -21,7 +22,14 @@ struct CmdInfo {
 static std::unordered_map<std::string, CmdInfo> Cmd;
 
 static void cmd_exit(const std::vector<std::string>&) {
+    std::cout << "Save state? (y/n): ";
+
+    std::string ans;
+    std::getline(std::cin, ans);
+
+    if (ans == "y" || ans == "Y") save_on_exit();
     std::cout << "Goodbye\n";
+    
     exit_requested = true;
 }
 

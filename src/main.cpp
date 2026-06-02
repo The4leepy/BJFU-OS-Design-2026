@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "user.h"
 #include "scheduler.h"
+#include "persistence.h"
 
 int main() {
     init_users();
@@ -14,7 +15,7 @@ int main() {
     init_memory();
     init_scheduler();
 
-    first_time_setup();
+    if (!auto_load()) first_time_setup();
 
     std::cout << "\033[3J\033[2J\033[H" << std::flush;
     std::cout << "========================================\n";

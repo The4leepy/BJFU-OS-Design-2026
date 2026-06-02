@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <fstream>
 #include "common.h"
 
 struct Proc_Mem_Blo {
@@ -79,3 +80,7 @@ void cmd_resume(const std::vector<std::string>&);
 void cmd_ptree(const std::vector<std::string>&);
 
 void cmd_kill(const std::vector<std::string>&);
+
+void save_processes(std::ofstream&);
+
+void load_processes(std::ifstream&);

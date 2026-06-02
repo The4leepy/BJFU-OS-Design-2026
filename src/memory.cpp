@@ -369,3 +369,42 @@ void cmd_swap_out(const std::vector<std::string>& args) {
     std::cout << "[INFO] Swapped out " << swaped_kb
     << "KB from process " << p->name << "(" << std::to_string(pid) << ")\n";
 }
+
+void save_memory(std::ofstream& f) {
+    int sz = static_cast<int>(Mem.size());
+    f.write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+
+    for (const auto& b : Mem) {
+        f.write(reinterpret_cast<const char*>(&b.base),      sizeof(b.base));
+        f.write(reinterpret_cast<const char*>(&b.size),      sizeof(b.size));
+        f.write(reinterpret_cast<const char*>(&b.owner_pid), sizeof(b.owner_pid));
+        char free_flag = b.is_free ? 1 : 0;
+        f.write(&free_flag, 1);
+    }
+
+    int a = static_cast<int>(algo);
+    f.write(reinterpret_cast<const char*>(&a), sizeof(a));
+}
+
+void load_memory(std::ifstream& f) {
+    Mem.clear();
+
+    int sz = 0;
+    f.read(reinterpret_cast<char*>(&sz), sizeof(sz));
+
+    for (int i = 0; i < sz; i++) {
+        MemBlock b{};
+        f.read(reinterpret_cast<char*>(&b.base),      sizeof(b.base));
+        f.read(reinterpret_cast<char*>(&b.size),      sizeof(b.size));
+        f.read(reinterpret_cast<char*>(&b.owner_pid), sizeof(b.owner_pid));
+        char free_flag;
+        f.read(&free_flag, 1);
+        b.is_free = (free_flag != 0);
+        Mem.push_back(b);
+    }
+
+    int a = 0;
+    f.read(reinterpret_cast<char*>(&a), sizeof(a));
+    
+    algo = static_cast<Mem_Alloc_Algo>(a);
+}

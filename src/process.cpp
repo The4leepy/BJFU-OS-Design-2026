@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "user.h"
 #include "scheduler.h"
+#include "persistence.h"
 
 static std::unordered_map<int, PCB> pcb_table;
 static int cur_pid = -1;
@@ -414,5 +415,76 @@ void cmd_kill(const std::vector<std::string>& args) {
     else {
         run_kill(pid);
         std::cout << "[OK] Killed process " << pid << '\n';
+    }
+}
+
+void save_processes(std::ofstream& f) {
+    int sz = static_cast<int>(pcb_table.size());
+    f.write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+    
+    for (const auto& [_, p] : pcb_table) {
+        f.write(reinterpret_cast<const char*>(&p.pid),           sizeof(p.pid));
+        f.write(reinterpret_cast<const char*>(&p.ppid),          sizeof(p.ppid));
+        write_str(f, p.name);
+        int st = static_cast<int>(p.state);
+        f.write(reinterpret_cast<const char*>(&st),              sizeof(st));
+        f.write(reinterpret_cast<const char*>(&p.priority),      sizeof(p.priority));
+        f.write(reinterpret_cast<const char*>(&p.current_queue), sizeof(p.current_queue));
+        write_str(f, p.owner_user);
+        f.write(reinterpret_cast<const char*>(&p.cpu_time),      sizeof(p.cpu_time));
+
+        int child_sz = static_cast<int>(p.child.size());
+        f.write(reinterpret_cast<const char*>(&child_sz), sizeof(child_sz));
+        for (int c : p.child)
+            f.write(reinterpret_cast<const char*>(&c), sizeof(c));
+
+        int mem_sz = static_cast<int>(p.mem.size());
+        f.write(reinterpret_cast<const char*>(&mem_sz), sizeof(mem_sz));
+        for (const auto& blk : p.mem) {
+            f.write(reinterpret_cast<const char*>(&blk.base), sizeof(blk.base));
+            f.write(reinterpret_cast<const char*>(&blk.size), sizeof(blk.size));
+            char sw = blk.is_swaped ? 1 : 0;
+            f.write(&sw, 1);
+        }
+    }
+}
+
+void load_processes(std::ifstream& f) {
+    pcb_table.clear();
+    cur_pid = -1;
+    int sz = 0;
+    f.read(reinterpret_cast<char*>(&sz), sizeof(sz));
+    for (int i = 0; i < sz; i++) {
+        PCB p{};
+        f.read(reinterpret_cast<char*>(&p.pid),           sizeof(p.pid));
+        f.read(reinterpret_cast<char*>(&p.ppid),          sizeof(p.ppid));
+        p.name        = read_str(f);
+        int st = 0;
+        f.read(reinterpret_cast<char*>(&st),              sizeof(st));
+        p.state       = static_cast<Proc_State>(st);
+        f.read(reinterpret_cast<char*>(&p.priority),      sizeof(p.priority));
+        f.read(reinterpret_cast<char*>(&p.current_queue), sizeof(p.current_queue));
+        p.owner_user  = read_str(f);
+        f.read(reinterpret_cast<char*>(&p.cpu_time),      sizeof(p.cpu_time));
+
+        int child_sz = 0;
+        f.read(reinterpret_cast<char*>(&child_sz), sizeof(child_sz));
+        p.child.resize(child_sz);
+        for (int j = 0; j < child_sz; j++)
+            f.read(reinterpret_cast<char*>(&p.child[j]), sizeof(p.child[j]));
+
+        int mem_sz = 0;
+        f.read(reinterpret_cast<char*>(&mem_sz), sizeof(mem_sz));
+        p.mem.resize(mem_sz);
+        for (int j = 0; j < mem_sz; j++) {
+            f.read(reinterpret_cast<char*>(&p.mem[j].base), sizeof(p.mem[j].base));
+            f.read(reinterpret_cast<char*>(&p.mem[j].size), sizeof(p.mem[j].size));
+            char sw;
+            f.read(&sw, 1);
+            p.mem[j].is_swaped = (sw != 0);
+        }
+
+        if (p.pid > cur_pid) cur_pid = p.pid;
+        pcb_table[p.pid] = std::move(p);
     }
 }

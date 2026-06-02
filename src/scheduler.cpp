@@ -142,10 +142,34 @@ void cmd_step(const std::vector<std::string>&) {
     }
 }
 
+static std::vector<std::string> output;
+
 static void sched_loop() {
     while (sched_running) {
         sched_mtx.lock();
+
+        int prev_pid = running_pid;
+
         scheduler_tick();
+        
+        std::string o_info = "";
+
+        if (prev_pid != 0) {
+            PCB* p = find_pcb(prev_pid);
+            if (p) {
+                o_info = "[STEP] pid=" + std::to_string(prev_pid) 
+                + " name=" + p->name 
+                + " cpu=" + std::to_string(p->cpu_time);
+
+                if (p->state != Proc_State::RUNNING)
+                    o_info += " (time slice expired)";
+                o_info += "\n";
+            }
+        } else {
+            o_info =  "[STEP] idle\n";
+        }
+        output.emplace_back(o_info);
+
         sched_mtx.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
@@ -157,6 +181,7 @@ void cmd_start(const std::vector<std::string>&) {
         return;
     }
 
+    output.clear();
     sched_running = true;
     sched_thread = std::thread(sched_loop);
 
@@ -171,6 +196,10 @@ void cmd_stop(const std::vector<std::string>&) {
 
     sched_running = false;
     if (sched_thread.joinable()) sched_thread.join();
+
+    for (std::string& info : output) {
+        std::cout << info;
+    }
 
     std::cout << "[OK] Scheduler stopped\n";
 }

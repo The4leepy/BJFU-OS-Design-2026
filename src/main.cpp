@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <ctime>
 #include "commands.h"
 #include "process.h"
 #include "memory.h"
@@ -10,21 +11,23 @@
 #include "persistence.h"
 
 int main() {
+    srand(static_cast<unsigned>(time(nullptr)));
     init_users();
     init_processes();
     init_memory();
     init_scheduler();
+    std::cout << "\033[3J\033[2J\033[H" << std::flush;
+    
+    if (!auto_load()) first_time_setup();
 
     if (try_lock_master()) {
         start_background();
+        is_master = true;
         std::cout << "[INFO] Running as master instance\n";
     } else {
+        is_master = false;
         std::cout << "[INFO] Running as viewer (another instance is master)\n";
     }
-
-    if (!auto_load()) first_time_setup();
-
-    std::cout << "\033[3J\033[2J\033[H" << std::flush;
     std::cout << "========================================\n";
     std::cout << "  OS Core Simulator v1.0\n";
     std::cout << "  Type 'help' for commands\n";

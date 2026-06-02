@@ -35,6 +35,7 @@ inline std::condition_variable msg_cv;   // 后台等新消息
 inline std::condition_variable done_cv;  // 主线程等结果
 
 inline std::mutex sched_mtx;  // 保护 pcb_table / Mem / queues
+inline bool is_master = true;
 
 void init_scheduler();
 void start_background();

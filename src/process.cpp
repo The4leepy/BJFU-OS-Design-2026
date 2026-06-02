@@ -2,7 +2,6 @@
 #include <iomanip>
 #include <unordered_map>
 #include <unordered_set>
-#include <random>
 #include "process.h"
 #include "common.h"
 #include "memory.h"
@@ -54,11 +53,7 @@ static void create_process(int _ppid, int _priority, std::string name, int _cpu_
     pcb_table[cur_pid].cpu_time = 0;
     pcb_table[cur_pid].cpu_needed = _cpu_needed;
 
-    std::random_device rd; 
-    std::mt19937 gen(rd()); 
-    std::uniform_int_distribution<int> die(1, 6);
-
-    if (cur_pid > 2 && !_cpu_needed) pcb_table[cur_pid].cpu_needed = die(gen) % 10 + 1;
+    if (cur_pid > 2 && !_cpu_needed) pcb_table[cur_pid].cpu_needed = rand() % 10 + 1;
     pcb_table[cur_pid].child.clear();
 
     pcb_table[_ppid].child.emplace_back(cur_pid);

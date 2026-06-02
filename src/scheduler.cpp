@@ -186,10 +186,7 @@ void start_background() {
                 // cout 重定向：命令的输出全部捕获到字符串
                 std::stringstream ss;
                 auto old_buf = std::cout.rdbuf(ss.rdbuf());
-                {
-                    std::lock_guard<std::mutex> lock(sched_mtx);
-                    dispatch_direct(msg->args);
-                }
+                dispatch_direct(msg->args);
                 std::cout.rdbuf(old_buf);
 
                 msg->result = ss.str();
@@ -199,8 +196,40 @@ void start_background() {
 
             // 2. 如果调度器在运行，执行一个 tick
             if (sched_running) {
+                int prev_pid = running_pid;
+                std::string prev_name;
+                int prev_cpu = 0, prev_needed = 0;
+                if (PCB* prev = find_pcb(prev_pid)) {
+                    prev_name = prev->name;
+                    prev_cpu = prev->cpu_time;
+                    prev_needed = prev->cpu_needed;
+                }
+
                 std::lock_guard<std::mutex> lock(sched_mtx);
                 scheduler_tick();
+
+                std::string o_info;
+                if (prev_pid != 0) {
+                    PCB* p = find_pcb(prev_pid);
+                    if (p) {
+                        o_info = "[STEP] pid=" + std::to_string(prev_pid)
+                               + " name=" + p->name
+                               + " cpu=" + std::to_string(p->cpu_time)
+                               + "/" + std::to_string(p->cpu_needed);
+                        if (p->state != Proc_State::RUNNING)
+                            o_info += " (time slice expired)";
+                        o_info += "\n";
+                    } else {
+                        o_info = "[STEP] pid=" + std::to_string(prev_pid)
+                               + " name=" + prev_name
+                               + " cpu=" + std::to_string(prev_cpu + 1)
+                               + "/" + std::to_string(prev_needed)
+                               + " [completed]\n";
+                    }
+                } else {
+                    o_info = "[STEP] idle\n";
+                }
+                output.emplace_back(o_info);
             }
 
             // 3. 等待一段时间再检查
@@ -214,6 +243,10 @@ void start_background() {
 // ============ 调度器开关命令 ============
 
 void cmd_start(const std::vector<std::string>&) {
+    if (!is_master) {
+        std::cout << "[INFO] Viewer instance cannot control scheduler\n";
+        return;
+    }
     if (sched_running) {
         std::cout << "[INFO] Scheduler is already running\n";
         return;
@@ -229,9 +262,6 @@ void cmd_stop(const std::vector<std::string>&) {
         return;
     }
     sched_running = false;
-
-    // 等待当前 tick 完成
-    std::lock_guard<std::mutex> lock(sched_mtx);
 
     for (const std::string& info : output)
         std::cout << info;

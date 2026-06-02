@@ -22,14 +22,16 @@ struct CmdInfo {
 static std::unordered_map<std::string, CmdInfo> Cmd;
 
 static void cmd_exit(const std::vector<std::string>&) {
-    std::cout << "Save state? (y/n): ";
+    if (is_master) {
+        std::cout << "Save state? (y/n): ";
 
-    std::string ans;
-    std::getline(std::cin, ans);
+        std::string ans;
+        std::getline(std::cin, ans);
 
-    if (ans == "y" || ans == "Y") save_on_exit();
+        if (ans == "y" || ans == "Y") save_on_exit();
+    }
     std::cout << "Goodbye\n";
-    
+
     exit_requested = true;
 }
 
@@ -132,6 +134,14 @@ void dispatch_direct(const std::vector<std::string>& args) {
 // 主线程用：交互命令直接执行，其他命令通过消息队列
 void dispatch(const std::vector<std::string>& args) {
     if (args.empty()) return;
+
+    // viewer 实例没有后台线程，全部命令直接执行
+    if (!is_master) {
+        auto it = Cmd.find(args[0]);
+        if (it != Cmd.end()) it->second.handler(args);
+        else std::cout << "Error: unknown command '" << args[0] << "'\n";
+        return;
+    }
 
     // 交互命令（需要读 cin 或需要主线程上下文）直接执行
     if (args[0] == "exit" || args[0] == "login" || args[0] == "sudo") {

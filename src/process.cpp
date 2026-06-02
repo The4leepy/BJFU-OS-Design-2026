@@ -96,8 +96,9 @@ void cmd_create(const std::vector<std::string>& args) {
         return;
     }
 
-    int prio = std::stoi(args[2]);
-
+    auto _prio = parse_int(args[2]);
+    if (!_prio) { std::cout << "Error: invalid number\n"; return; }
+    int prio = *_prio;
     if (prio > 15 || prio < 0) {
         std::cout << "Error: priority must be 0-15\n";
         return;        
@@ -115,8 +116,9 @@ void cmd_show(const std::vector<std::string>& args) {
         return;        
     }
 
-    int pid = std::stoi(args[1]);
-
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
     if (pid < 0 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
@@ -172,15 +174,17 @@ void cmd_renice(const std::vector<std::string>& args) {
         return;
     }
     
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
 
-    int prio = std::stoi(args[2]);
-
+    auto _prio = parse_int(args[2]);
+    if (!_prio) { std::cout << "Error: invalid number\n"; return; }
+    int prio = *_prio;
     if (prio > 15 || prio < 0) {
         std::cout << "Error: priority must be 0-15\n";
         return;        
@@ -209,9 +213,10 @@ void cmd_block(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
@@ -242,9 +247,10 @@ void cmd_wakeup(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
@@ -275,9 +281,10 @@ void cmd_suspend(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
@@ -308,9 +315,10 @@ void cmd_resume(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
@@ -401,9 +409,10 @@ void cmd_kill(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid <= 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid <= 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;        
     }

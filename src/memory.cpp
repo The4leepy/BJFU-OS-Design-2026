@@ -169,9 +169,10 @@ void cmd_alloc(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
@@ -187,8 +188,11 @@ void cmd_alloc(const std::vector<std::string>& args) {
         return;
     }
 
-    int req = std::stoi(args[2]);
+    auto _req = parse_int(args[2]);
 
+    if (!_req) { std::cout << "Error: invalid number\n"; return; }
+
+    int req = *_req;
     if (req <= 0) {
         std::cout << "Error: size must be positive\n";
         return;
@@ -234,9 +238,10 @@ void cmd_free_mem(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
@@ -328,9 +333,10 @@ void cmd_swap_out(const std::vector<std::string>& args) {
         return;
     }
 
-    int pid = std::stoi(args[1]);
-
-    if (pid < 0 || pid >= MAX_PID) {
+    auto _pid = parse_int(args[1]);
+    if (!_pid) { std::cout << "Error: invalid number\n"; return; }
+    int pid = *_pid;
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;
     }
@@ -347,9 +353,10 @@ void cmd_swap_out(const std::vector<std::string>& args) {
         return;
     }
 
-    int tar_kb = std::stoi(args[2]);
-
-    std::sort(p->mem.begin(), p->mem.end(), 
+    auto _tar_kb = parse_int(args[2]);
+    if (!_tar_kb) { std::cout << "Error: invalid number\n"; return; }
+    int tar_kb = *_tar_kb;
+    std::sort(p->mem.begin(), p->mem.end(),
     [](Proc_Mem_Blo& x, Proc_Mem_Blo& y){ return x.size < y.size; } );
 
     int swaped_kb = 0;

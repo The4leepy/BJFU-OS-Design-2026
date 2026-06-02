@@ -281,6 +281,24 @@ void cmd_free_mem(const std::vector<std::string>& args) {
     Merge_Fre_Mem_Blo();
 }
 
+void free_process_mem(int pid) {
+    PCB* p = find_pcb(pid);
+    if (!p) return;
+
+    std::sort(p->mem.begin(), p->mem.end(),
+    [](Proc_Mem_Blo& x, Proc_Mem_Blo& y) { return x.base < y.base; });
+
+    for (const auto& tar : p->mem) {
+        auto it = Mem.begin();
+        while (it != Mem.end() && it->base != tar.base) it++;
+        if (it == Mem.end()) break;
+        it->is_free = true;
+        it->owner_pid = -1;
+    }
+    p->mem.clear();
+    Merge_Fre_Mem_Blo();
+}
+
 void cmd_compact(const std::vector<std::string>&) {
     std::multiset<MemBlock> oc_bl;
 

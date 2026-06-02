@@ -26,6 +26,7 @@ struct PCB {
     std::vector<Proc_Mem_Blo> mem;
 
     int cpu_time;
+    int cpu_needed;
 
     std::vector<int> child;
 
@@ -46,7 +47,7 @@ struct PCB {
         }
         if (tar == "priority") return "Priority: " + std::to_string(priority);
         if (tar == "mem")     return "Memory:   " + std::to_string(get_tol_size(mem)) + " KB";
-        if (tar == "cpu")     return "CPU Time: " + std::to_string(cpu_time);
+        if (tar == "cpu")     return "CPU:      " + std::to_string(cpu_time) + "/" + std::to_string(cpu_needed);
         if (tar == "child") {
             std::string tmp;
             for (int c : child) tmp += std::to_string(c) + " ";
@@ -60,6 +61,8 @@ struct PCB {
 void init_processes();
 
 PCB* find_pcb(int pid);
+
+void run_kill(int pid);
 
 void cmd_create(const std::vector<std::string>&);
 

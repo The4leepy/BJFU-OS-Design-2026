@@ -3,6 +3,8 @@
 #include "scheduler.h"
 #include "process.h"
 
+static std::vector<std::string> output;
+
 static int pid_to_queue(int priority) {
     for (int q = 0; q < Q_COUNT; q++) {
         if (priority >= Q_RANGES[q][0] && priority <= Q_RANGES[q][1]) return q;
@@ -112,7 +114,13 @@ void scheduler_tick() {
     ticks_left--;
     p->cpu_time++;
 
-    if (!ticks_left) {
+    if (p->cpu_time >= p->cpu_needed) {
+        std::string km = "[OK] Process " + p->name + "("
+                       + std::to_string(p->pid) + ") completed\n";
+        output.emplace_back(km);
+        run_kill(p->pid);
+        sched_pick_next();
+    } else if (!ticks_left) {
         int q = p->current_queue;
         int next_q = std::min(q + 1, Q_COUNT - 1);
 
@@ -126,47 +134,72 @@ void scheduler_tick() {
 
 void cmd_step(const std::vector<std::string>&) {
     int prev_pid = running_pid;
+    std::string prev_name;
+    int prev_cpu = 0, prev_needed = 0;
+    if (PCB* prev = find_pcb(prev_pid)) {
+        prev_name = prev->name;
+        prev_cpu = prev->cpu_time;
+        prev_needed = prev->cpu_needed;
+    }
+
     scheduler_tick();
+
     if (prev_pid != 0) {
         PCB* p = find_pcb(prev_pid);
         if (p) {
             std::cout << "[STEP] pid=" << prev_pid
                     << " name=" << p->name
-                    << " cpu=" << p->cpu_time;
+                    << " cpu=" << p->cpu_time << "/" << p->cpu_needed;
             if (p->state != Proc_State::RUNNING)
                 std::cout << " (time slice expired)";
             std::cout << "\n";
+        } else {
+            std::cout << "[STEP] pid=" << prev_pid
+                    << " name=" << prev_name
+                    << " cpu=" << (prev_cpu + 1) << "/" << prev_needed
+                    << " [completed]\n";
         }
     } else {
         std::cout << "[STEP] idle\n";
     }
 }
 
-static std::vector<std::string> output;
-
 static void sched_loop() {
     while (sched_running) {
         sched_mtx.lock();
 
         int prev_pid = running_pid;
+        std::string prev_name;
+        int prev_cpu = 0, prev_needed = 0;
+        if (PCB* prev = find_pcb(prev_pid)) {
+            prev_name = prev->name;
+            prev_cpu = prev->cpu_time;
+            prev_needed = prev->cpu_needed;
+        }
 
         scheduler_tick();
-        
-        std::string o_info = "";
+
+        std::string o_info;
 
         if (prev_pid != 0) {
             PCB* p = find_pcb(prev_pid);
             if (p) {
-                o_info = "[STEP] pid=" + std::to_string(prev_pid) 
-                + " name=" + p->name 
-                + " cpu=" + std::to_string(p->cpu_time);
-
+                o_info = "[STEP] pid=" + std::to_string(prev_pid)
+                       + " name=" + p->name
+                       + " cpu=" + std::to_string(p->cpu_time)
+                       + "/" + std::to_string(p->cpu_needed);
                 if (p->state != Proc_State::RUNNING)
                     o_info += " (time slice expired)";
                 o_info += "\n";
+            } else {
+                o_info = "[STEP] pid=" + std::to_string(prev_pid)
+                       + " name=" + prev_name
+                       + " cpu=" + std::to_string(prev_cpu + 1)
+                       + "/" + std::to_string(prev_needed)
+                       + " [completed]\n";
             }
         } else {
-            o_info =  "[STEP] idle\n";
+            o_info = "[STEP] idle\n";
         }
         output.emplace_back(o_info);
 

@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <unordered_map>
 #include <unordered_set>
+#include <random>
 #include "process.h"
 #include "common.h"
 #include "memory.h"
@@ -29,7 +30,7 @@ static const char* state_name(Proc_State s) {
     }
 }
 
-static void create_process(int _ppid, int _priority, std::string name) {
+static void create_process(int _ppid, int _priority, std::string name, int _cpu_needed = 0) {
     int tried = 0;
     while (find_pcb(cur_pid)) {
         cur_pid++;
@@ -51,6 +52,13 @@ static void create_process(int _ppid, int _priority, std::string name) {
 
     pcb_table[cur_pid].mem.clear();
     pcb_table[cur_pid].cpu_time = 0;
+    pcb_table[cur_pid].cpu_needed = _cpu_needed;
+
+    std::random_device rd; 
+    std::mt19937 gen(rd()); 
+    std::uniform_int_distribution<int> die(1, 6);
+
+    if (cur_pid > 2 && !_cpu_needed) pcb_table[cur_pid].cpu_needed = die(gen) % 10 + 1;
     pcb_table[cur_pid].child.clear();
 
     pcb_table[_ppid].child.emplace_back(cur_pid);
@@ -71,6 +79,7 @@ void init_processes() {
     pcb_table[cur_pid].owner_user = "root";
 
     pcb_table[cur_pid].cpu_time = 0;
+    pcb_table[cur_pid].cpu_needed = 0;
 
     pcb_table[cur_pid].child.clear();
 
@@ -88,7 +97,7 @@ PCB* find_pcb(int pid) {
 
 void cmd_create(const std::vector<std::string>& args) {
     if (args.size() < 3) {
-        std::cout << "Usage: create <name> <priority>\n";
+        std::cout << "Usage: create <name> <priority> [cpu_needed]\n";
         return;
     }
     if (args[1].length() > MAX_PCB_NAME) {
@@ -104,10 +113,22 @@ void cmd_create(const std::vector<std::string>& args) {
         return;        
     }
 
-    create_process(1, prio, args[1]);
+    int c_n = 0;
+    if (args.size() > 3) {
+        auto _cpu_needed = parse_int(args[3]);
+        if (!_cpu_needed) { std::cout << "Error: invalid number\n"; return; }
+        c_n = *_cpu_needed;
+    }
+    if (c_n < 0 || c_n > 10) {
+        std::cout << "Error: cpu time must be 0-10\n";
+        return;
+    }
+    
+    create_process(1, prio, args[1], c_n);
 
-    std::cout << "[OK] Process created: pid=" << cur_pid 
-    << ", name=" << args[1] << ", priority=" << prio << "\n";
+    std::cout << "[OK] Process created: pid=" << cur_pid
+    << ", name=" << args[1] << ", priority=" << prio
+    << ", cpu=" << pcb_table[cur_pid].cpu_needed << "\n";
 }
 
 void cmd_show(const std::vector<std::string>& args) {
@@ -155,7 +176,7 @@ void cmd_list(const std::vector<std::string>&) {
               << std::setw(6)  << "PRIO"
               << std::setw(8)  << "MEM"
               << "CPU\n"
-              << std::string(48, '-') << '\n';
+              << std::string(54, '-') << '\n';
     for (const auto& [_, p] : pcb_table) {
         if (!can_access(&p)) continue;
         std::cout << std::left
@@ -164,7 +185,7 @@ void cmd_list(const std::vector<std::string>&) {
                   << std::setw(10) << state_name(p.state)
                   << std::setw(6)  << p.priority
                   << std::setw(8)  << (std::to_string(get_tol_size(p.mem)) + "KB")
-                  << p.cpu_time << '\n';
+                  << p.cpu_time << "/" << p.cpu_needed << '\n';
     }
 }
 
@@ -393,9 +414,9 @@ static void kill_impl(int pid, std::unordered_set<int>& visited) {
     p->state = Proc_State::SUSPENDED;
     sched_dequeue(p->pid);
 
-    pcb_table.erase(pid);
+    free_process_mem(pid);
 
-    cmd_free_mem({"free_mem",std::to_string(pid)});
+    pcb_table.erase(pid);
 }
 
 void run_kill(int pid) {
@@ -412,7 +433,7 @@ void cmd_kill(const std::vector<std::string>& args) {
     auto _pid = parse_int(args[1]);
     if (!_pid) { std::cout << "Error: invalid number\n"; return; }
     int pid = *_pid;
-    if (pid <= 3 || pid >= MAX_PID) {
+    if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
         return;        
     }
@@ -440,7 +461,8 @@ void save_processes(std::ofstream& f) {
         f.write(reinterpret_cast<const char*>(&p.priority),      sizeof(p.priority));
         f.write(reinterpret_cast<const char*>(&p.current_queue), sizeof(p.current_queue));
         write_str(f, p.owner_user);
-        f.write(reinterpret_cast<const char*>(&p.cpu_time),      sizeof(p.cpu_time));
+        f.write(reinterpret_cast<const char*>(&p.cpu_time),   sizeof(p.cpu_time));
+        f.write(reinterpret_cast<const char*>(&p.cpu_needed), sizeof(p.cpu_needed));
 
         int child_sz = static_cast<int>(p.child.size());
         f.write(reinterpret_cast<const char*>(&child_sz), sizeof(child_sz));
@@ -474,7 +496,8 @@ void load_processes(std::ifstream& f) {
         f.read(reinterpret_cast<char*>(&p.priority),      sizeof(p.priority));
         f.read(reinterpret_cast<char*>(&p.current_queue), sizeof(p.current_queue));
         p.owner_user  = read_str(f);
-        f.read(reinterpret_cast<char*>(&p.cpu_time),      sizeof(p.cpu_time));
+        f.read(reinterpret_cast<char*>(&p.cpu_time),   sizeof(p.cpu_time));
+        f.read(reinterpret_cast<char*>(&p.cpu_needed), sizeof(p.cpu_needed));
 
         int child_sz = 0;
         f.read(reinterpret_cast<char*>(&child_sz), sizeof(child_sz));

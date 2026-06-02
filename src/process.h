@@ -18,6 +18,7 @@ struct PCB {
     std::string name;
     Proc_State state;
     int priority;
+    int current_queue;
 
     std::string owner_user;
 

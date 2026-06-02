@@ -6,6 +6,7 @@
 #include "common.h"
 #include "memory.h"
 #include "user.h"
+#include "scheduler.h"
 
 static std::unordered_map<int, PCB> pcb_table;
 static int cur_pid = -1;
@@ -27,19 +28,55 @@ static const char* state_name(Proc_State s) {
     }
 }
 
+static void create_process(int _ppid, int _priority, std::string name) {
+    int tried = 0;
+    while (find_pcb(cur_pid)) {
+        cur_pid++;
+        if (cur_pid >= MAX_PID) cur_pid = 0;
+        if (++tried >= MAX_PID) {
+            std::cout << "Error: PID space exhausted\n";
+            return;
+        }
+    }
+
+    pcb_table[cur_pid].pid = cur_pid;
+    pcb_table[cur_pid].ppid = _ppid;
+    pcb_table[cur_pid].name = name;
+    pcb_table[cur_pid].state = Proc_State::READY;
+    pcb_table[cur_pid].priority = _priority;
+    pcb_table[cur_pid].current_queue = -1;
+
+    pcb_table[cur_pid].owner_user = current_user;
+
+    pcb_table[cur_pid].mem.clear();
+    pcb_table[cur_pid].cpu_time = 0;
+    pcb_table[cur_pid].child.clear();
+
+    pcb_table[_ppid].child.emplace_back(cur_pid);
+
+    if (cur_pid > 2) sched_enqueue(cur_pid);
+}
+
 void init_processes() {
     cur_pid++;
 
     pcb_table[cur_pid].pid = cur_pid;
     pcb_table[cur_pid].ppid = -1;
-    pcb_table[cur_pid].name = "init";
+    pcb_table[cur_pid].name = "swapper";
     pcb_table[cur_pid].state = Proc_State::RUNNING;
     pcb_table[cur_pid].priority = 0;
+    pcb_table[cur_pid].current_queue = -1;
+
     pcb_table[cur_pid].owner_user = "root";
 
     pcb_table[cur_pid].cpu_time = 0;
 
     pcb_table[cur_pid].child.clear();
+
+    running_pid = 0;
+
+    create_process(0, 0, "init");
+    create_process(0, 0, "kthreadd");
 }
 
 PCB* find_pcb(int pid) {
@@ -65,29 +102,7 @@ void cmd_create(const std::vector<std::string>& args) {
         return;        
     }
 
-    int tried = 0;
-    while (find_pcb(cur_pid)) {
-        cur_pid++;
-        if (cur_pid >= MAX_PID) cur_pid = 0;
-        if (++tried >= MAX_PID) {
-            std::cout << "Error: PID space exhausted\n";
-            return;
-        }
-    }
-
-    pcb_table[cur_pid].pid = cur_pid;
-    pcb_table[cur_pid].ppid = 0;
-    pcb_table[cur_pid].name = args[1];
-    pcb_table[cur_pid].state = Proc_State::READY;
-    pcb_table[cur_pid].priority = prio;
-
-    pcb_table[cur_pid].owner_user = current_user;
-
-    pcb_table[cur_pid].mem.clear();
-    pcb_table[cur_pid].cpu_time = 0;
-    pcb_table[cur_pid].child.clear();
-
-    pcb_table[0].child.emplace_back(cur_pid);
+    create_process(1, prio, args[1]);
 
     std::cout << "[OK] Process created: pid=" << cur_pid 
     << ", name=" << args[1] << ", priority=" << prio << "\n";
@@ -139,7 +154,7 @@ void cmd_list(const std::vector<std::string>&) {
               << "CPU\n"
               << std::string(48, '-') << '\n';
     for (const auto& [_, p] : pcb_table) {
-        if (current_user != "root" && p.owner_user != current_user) continue;
+        if (!can_access(&p)) continue;
         std::cout << std::left
                   << std::setw(6)  << p.pid
                   << std::setw(12) << p.name
@@ -179,8 +194,10 @@ void cmd_renice(const std::vector<std::string>& args) {
         std::cout << "Error: permission denied\n";
         return;
     }
+
     int _old = p->priority;
     p->priority = prio;
+
     std::cout << "[OK] Change process " << pid << " priority "
               << _old << " to " << prio << '\n';
 }
@@ -211,7 +228,10 @@ void cmd_block(const std::vector<std::string>& args) {
         std::cout << "[INFO] Process " << pid <<  " is already blocked\n";
         return;
     }
+
     p->state = Proc_State::BLOCKED;
+    sched_dequeue(p->pid);
+    
     std::cout << "[OK] Block process " << pid << '\n';
 }
 
@@ -241,7 +261,10 @@ void cmd_wakeup(const std::vector<std::string>& args) {
         std::cout << "[INFO] Process " << pid << " is not blocked\n";
         return;
     }
+
     p->state = Proc_State::READY;
+    sched_enqueue(p->pid);
+
     std::cout << "[OK] Wakeup process " << pid << '\n';
 }
 
@@ -271,7 +294,10 @@ void cmd_suspend(const std::vector<std::string>& args) {
         std::cout << "[INFO] Process " << pid << " is already suspended\n";
         return;
     }
+
     p->state = Proc_State::SUSPENDED;
+    sched_dequeue(p->pid);
+
     std::cout << "[OK] Suspend process " << pid << '\n';
 }
 
@@ -301,7 +327,10 @@ void cmd_resume(const std::vector<std::string>& args) {
         std::cout << "[INFO] Process " << pid << " is not suspended\n";
         return;
     }
+
     p->state = Proc_State::READY;
+    sched_enqueue(p->pid);
+
     std::cout << "[OK] Resume process " << pid << '\n';
 }
 
@@ -317,7 +346,7 @@ static void print_tree(int pid, const std::string& prefix, bool is_last,
     
     PCB* p = find_pcb(pid);
     if (!p) return;
-    if (current_user != "root" && p->owner_user != current_user) return;
+    if (!can_access(p)) return;
 
     std::cout << prefix;
     if (pid != 0)
@@ -351,6 +380,9 @@ static void kill_impl(int pid, std::unordered_set<int>& visited) {
         auto& f = parent->child;
         std::erase(f, pid);
     }
+
+    p->state = Proc_State::SUSPENDED;
+    sched_dequeue(p->pid);
 
     pcb_table.erase(pid);
 

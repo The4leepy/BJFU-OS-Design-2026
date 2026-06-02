@@ -17,7 +17,7 @@ inline bool sudo_active = false;
 
 struct PCB;
 
-bool can_access(PCB* p);
+bool can_access(const PCB* p);
 
 void init_users();
 

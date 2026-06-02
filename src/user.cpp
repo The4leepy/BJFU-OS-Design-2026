@@ -5,7 +5,7 @@
 #include "process.h"
 #include "user.h"
 
-bool can_access(PCB* p) {
+bool can_access(const PCB* p) {
     return current_user == "root" || sudo_active ||
            p->owner_user == current_user;
 }

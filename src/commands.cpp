@@ -8,6 +8,7 @@
 #include "process.h"
 #include "memory.h"
 #include "user.h"
+#include "scheduler.h"
 
 using Cmd_handler = std::function<void(std::vector<std::string>)>;
 
@@ -48,10 +49,11 @@ static void cmd_help(const std::vector<std::string>& args) {
             groups[info.category].emplace_back(name, info.desc);
 
     std::map<std::string, std::string> titles = {
-        {"User",    "User Commands"},
-        {"Process", "Process Commands"},
-        {"Memory",  "Memory Commands"},
-        {"System",  "System Commands"},
+        {"User",      "User Commands"},
+        {"Process",   "Process Commands"},
+        {"Memory",    "Memory Commands"},
+        {"Scheduler", "Scheduler Commands"},
+        {"System",    "System Commands"},
     };
 
     if (groups.empty() && !filter.empty()) {
@@ -98,6 +100,8 @@ static struct _Init_Cmd {
         Cmd["compact"]        = {cmd_compact,        "Compact memory",             "Memory"};
         Cmd["pgfault"]        = {cmd_pgfault,        "Simulate a page fault",      "Memory"};
         Cmd["swap_out"]       = {cmd_swap_out,       "Swap out process memory",    "Memory"};
+        // Scheduler
+        Cmd["step"]            = {cmd_step,            "Execute one scheduler tick", "Scheduler"};
     }
 } _init_Cmd;
 

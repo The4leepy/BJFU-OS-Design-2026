@@ -75,6 +75,8 @@ static void cmd_help(const std::vector<std::string>& args) {
             printf("  %-18s - %s\n", name.c_str(), desc.c_str());
     }
 
+    if (filter.empty())
+        std::cout << "\nTip: use 'help <category>' to filter (e.g. help scheduler)\n";
 }
 
 static struct _Init_Cmd {

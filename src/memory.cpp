@@ -73,10 +73,11 @@ void cmd_set_alloc_algo(const std::vector<std::string>& args) {
 
 void cmd_show_mem(const std::vector<std::string>&) {
     std::cout << std::left
-              << std::setw(9) << "Start"
-              << std::setw(9) << "Size"
-              << std::setw(9) << "Owner"
-              << std::setw(9) << "Status\n";
+              << std::setw(7)  << "Start"
+              << std::setw(7)  << "Size"
+              << std::setw(22) << "Owner"
+              << "Status\n"
+              << std::string(44, '-') << '\n';
     for (auto& _mem : Mem) {
         std::string owner_name = "-";
         if (_mem.owner_pid >= 0) {
@@ -84,10 +85,10 @@ void cmd_show_mem(const std::vector<std::string>&) {
             if (p) owner_name = p->name + "(" + std::to_string(_mem.owner_pid) + ")";
         }
         std::cout << std::left
-              << std::setw(9) << _mem.base
-              << std::setw(9) << _mem.size
-              << std::setw(9) << owner_name
-              << std::setw(9) << (_mem.is_free ? "Free" : "Alloc")
+              << std::setw(7)  << _mem.base
+              << std::setw(7)  << _mem.size
+              << std::setw(22) << owner_name
+              << (_mem.is_free ? "Free" : "Alloc")
               << '\n';
     }
 

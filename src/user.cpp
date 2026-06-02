@@ -10,6 +10,7 @@ bool can_access(const PCB* p) {
     return current_user == "root" || sudo_active ||
            p->owner_user == current_user;
 }
+bool user_changed = false;
 
 void cmd_sudo(const std::vector<std::string>& args) {
     if (args.size() < 2) {
@@ -155,6 +156,7 @@ void cmd_login(const std::vector<std::string>& args) {
     }
 
     current_user = args[1];
+    user_changed = true;
 
     std::cout << "[OK] User " << args[1] << ", welcome!\n";
 }
@@ -165,9 +167,23 @@ void cmd_logout(const std::vector<std::string>&) {
         return;
     }
 
-    current_user = "root";
+    std::string log_out_name = current_user;
 
     std::cout << "[OK] Logged out\n";
+    std::cout << "Existing users: ";
+    for (auto& [name, _] : users) std::cout << name << ' ';
+    std::cout << '\n';
+
+    std::string log_name = "";
+    user_changed = false;
+
+    while (!user_changed) {
+        std::cout << "Please enter the username you want to log in with: ";
+
+        std::getline(std::cin, log_name);
+        cmd_login({"login", log_name});
+    }
+    
 }
 
 void save_users(std::ofstream& f) {

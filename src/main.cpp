@@ -6,11 +6,13 @@
 #include "process.h"
 #include "memory.h"
 #include "user.h"
+#include "scheduler.h"
 
 int main() {
     init_users();
     init_processes();
     init_memory();
+    init_scheduler();
 
     first_time_setup();
 

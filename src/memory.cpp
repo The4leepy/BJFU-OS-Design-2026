@@ -378,6 +378,20 @@ void cmd_swap_out(const std::vector<std::string>& args) {
     << "KB from process " << p->name << "(" << std::to_string(pid) << ")\n";
 }
 
+void print_mem_map() {
+    const int W = 64;
+    for (const auto& b : Mem) {
+        int w = std::max(1, b.size * W / TOTAL_MEM_KB);
+        if (b.is_free) {
+            std::cout << std::string(w, '-');
+        } else {
+            std::cout << "|" << b.size << "KB"
+                      << std::string(std::max(0, w - 4), '#');
+        }
+    }
+    std::cout << "|\n";
+}
+
 void save_memory(std::ofstream& f) {
     int sz = static_cast<int>(Mem.size());
     f.write(reinterpret_cast<const char*>(&sz), sizeof(sz));

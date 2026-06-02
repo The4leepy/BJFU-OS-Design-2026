@@ -35,6 +35,8 @@ void cmd_pgfault(const std::vector<std::string>&);
 
 void cmd_swap_out(const std::vector<std::string>&);
 
+void print_mem_map();
+
 void save_memory(std::ofstream&);
 
 void load_memory(std::ifstream&);

@@ -497,3 +497,33 @@ void load_processes(std::ifstream& f) {
         pcb_table[p.pid] = std::move(p);
     }
 }
+
+void cmd_overview(const std::vector<std::string>&) {
+    std::cout << "\n=== System Overview ===\n\n";
+
+    std::cout << "Process Tree:\n";
+    std::unordered_set<int> visited;
+    print_tree(0, "", false, visited);
+
+    std::cout << "\nMemory Map (0-" << TOTAL_MEM_KB << "KB):\n";
+    print_mem_map();
+
+    std::cout << "\nMLFQ:\n";
+    const char* qnames[3] = {
+        "Q0(prio 0-3)",
+        "Q1(prio 4-7)",
+        "Q2(prio 8-15)"
+    };
+    for (int q = 0; q < Q_COUNT; q++) {
+        std::cout << "  " << qnames[q] << ": ";
+        if (queues[q].empty()) {
+            std::cout << "(empty)";
+        } else {
+            for (int pid : queues[q]) {
+                PCB* p = find_pcb(pid);
+                if (p) std::cout << p->name << "(" << pid << ") ";
+            }
+        }
+        std::cout << "\n";
+    }
+}

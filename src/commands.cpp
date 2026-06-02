@@ -98,7 +98,8 @@ static struct _Init_Cmd {
         Cmd["suspend"]    = {cmd_suspend,"Suspend a process",            "Process"};
         Cmd["resume"]     = {cmd_resume, "Resume a suspended process",   "Process"};
         Cmd["ptree"]      = {cmd_ptree,      "Show process tree",            "Process"};
-        Cmd["kill"]   = {cmd_kill,   "Kill a process",               "Process"};
+        Cmd["kill"]     = {cmd_kill,     "Kill a process",               "Process"};
+        Cmd["overview"] = {cmd_overview, "Show full system overview",    "Process"};
         // Memory
         Cmd["set_alloc_algo"] = {cmd_set_alloc_algo, "Set allocation algorithm", "Memory"};
         Cmd["show_mem"]       = {cmd_show_mem,       "Show memory map",          "Memory"};

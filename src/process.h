@@ -81,6 +81,8 @@ void cmd_ptree(const std::vector<std::string>&);
 
 void cmd_kill(const std::vector<std::string>&);
 
+void cmd_overview(const std::vector<std::string>&);
+
 void save_processes(std::ofstream&);
 
 void load_processes(std::ifstream&);

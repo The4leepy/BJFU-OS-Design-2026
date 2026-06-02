@@ -33,12 +33,7 @@ int main() {
         std::string tmp;
         while (ss >> tmp) args.emplace_back(std::move(tmp));
 
-        if (current_user.empty()) {
-            if (args[0] != "help" && args[0] != "register" && args[0] != "login") {
-                std::cout << "Please login first.\n";
-                continue;
-            }
-        }
+        if (args.empty()) continue;
 
         dispatch(args);
     }

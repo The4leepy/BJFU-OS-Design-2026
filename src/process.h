@@ -59,22 +59,22 @@ void init_processes();
 
 PCB* find_pcb(int pid);
 
-void cmd_create_pcb(const std::vector<std::string>&);
+void cmd_create(const std::vector<std::string>&);
 
-void cmd_show_pcb(const std::vector<std::string>&);
+void cmd_show(const std::vector<std::string>&);
 
-void cmd_list_pcb(const std::vector<std::string>&);
+void cmd_list(const std::vector<std::string>&);
 
 void cmd_renice(const std::vector<std::string>&);
 
-void cmd_block_pcb(const std::vector<std::string>&);
+void cmd_block(const std::vector<std::string>&);
 
-void cmd_wakeup_pcb(const std::vector<std::string>&);
+void cmd_wakeup(const std::vector<std::string>&);
 
-void cmd_suspend_pcb(const std::vector<std::string>&);
+void cmd_suspend(const std::vector<std::string>&);
 
-void cmd_resume_pcb(const std::vector<std::string>&);
+void cmd_resume(const std::vector<std::string>&);
 
 void cmd_ptree(const std::vector<std::string>&);
 
-void cmd_kill_pcb(const std::vector<std::string>&);
+void cmd_kill(const std::vector<std::string>&);

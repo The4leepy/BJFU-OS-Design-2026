@@ -20,11 +20,11 @@ struct CmdInfo {
 static std::unordered_map<std::string, CmdInfo> Cmd;
 
 static void cmd_exit(const std::vector<std::string>&) {
-    std::cout << "Bye bye.\n";
+    std::cout << "Goodbye\n";
     exit_requested = true;
 }
 
-static void cmd_clear(const std::vector<std::string>) {
+static void cmd_clear(const std::vector<std::string>&) {
     std::cout << "\033[3J\033[2J\033[H" << std::flush;
     std::cout << "========================================\n";
     std::cout << "  OS Core Simulator v1.0\n";
@@ -79,16 +79,16 @@ static struct _Init_Cmd {
         Cmd["clear"] = {cmd_clear, "Clear terminal screen",          "System"};
         Cmd["exit"]  = {cmd_exit,  "Exit the simulator",             "System"};
         // Process
-        Cmd["create_pcb"] = {cmd_create_pcb, "Create a new process",         "Process"};
-        Cmd["show_pcb"]   = {cmd_show_pcb,   "Show process details",         "Process"};
-        Cmd["list_pcb"]   = {cmd_list_pcb,   "List all processes",           "Process"};
+        Cmd["create"] = {cmd_create, "Create a new process",         "Process"};
+        Cmd["show"]   = {cmd_show,   "Show process details",         "Process"};
+        Cmd["list"]   = {cmd_list,   "List all processes",           "Process"};
         Cmd["renice"]     = {cmd_renice,     "Change process priority",      "Process"};
-        Cmd["block_pcb"]  = {cmd_block_pcb,  "Block a process",              "Process"};
-        Cmd["wakeup_pcb"] = {cmd_wakeup_pcb, "Wake up a blocked process",    "Process"};
-        Cmd["suspend"]    = {cmd_suspend_pcb,"Suspend a process",            "Process"};
-        Cmd["resume"]     = {cmd_resume_pcb, "Resume a suspended process",   "Process"};
+        Cmd["block"]  = {cmd_block,  "Block a process",              "Process"};
+        Cmd["wakeup"] = {cmd_wakeup, "Wake up a blocked process",    "Process"};
+        Cmd["suspend"]    = {cmd_suspend,"Suspend a process",            "Process"};
+        Cmd["resume"]     = {cmd_resume, "Resume a suspended process",   "Process"};
         Cmd["ptree"]      = {cmd_ptree,      "Show process tree",            "Process"};
-        Cmd["kill_pcb"]   = {cmd_kill_pcb,   "Kill a process",               "Process"};
+        Cmd["kill"]   = {cmd_kill,   "Kill a process",               "Process"};
         // Memory
         Cmd["set_alloc_algo"] = {cmd_set_alloc_algo, "Set allocation algorithm", "Memory"};
         Cmd["show_mem"]       = {cmd_show_mem,       "Show memory map",          "Memory"};
@@ -107,6 +107,6 @@ void dispatch(const std::vector<std::string>& args) {
     if (it != Cmd.end()) {
         it->second.handler(args);
     } else {
-        std::cout << "Unknown command: " << args[0] << '\n';
+        std::cout << "Error: unknown command '" << args[0] << "'\n";
     }
 }

@@ -29,7 +29,7 @@ void Merge_Fre_Mem_Blo() {
         auto ne = it;
         ne++;
 
-        while (ne != Mem.end() && ne->is_free) {
+        while (ne != Mem.end() && it->is_free && ne->is_free) {
             it->size += ne->size;
             Mem.erase(ne);
             ne = it;
@@ -47,19 +47,19 @@ void cmd_set_alloc_algo(const std::vector<std::string>& args) {
 
     if (args[1] == "ff") {
         if (get_algo_status() == "FIRST_FIT") {
-            std::cout << "Algorithm status is already FIRST_FIT\n";
+            std::cout << "[INFO] Algorithm is already set to FIRST_FIT\n";
             return;
         }
         algo = Mem_Alloc_Algo::FIRST_FIT;
     } else if (args[1] == "bf") {
         if (get_algo_status() == "BEST_FIT") {
-            std::cout << "Algorithm status is already BEST_FIT\n";
+            std::cout << "[INFO] Algorithm is already set to BEST_FIT\n";
             return;
         } 
         algo = Mem_Alloc_Algo::BEST_FIT;
     } else if (args[1] == "wf") {
         if (get_algo_status() == "WORST_FIT") {
-            std::cout << "Algorithm status is already WORST_FIT\n";
+            std::cout << "[INFO] Algorithm is already set to WORST_FIT\n";
             return;
         }
         algo = Mem_Alloc_Algo::WORST_FIT;
@@ -189,8 +189,13 @@ void cmd_alloc(const std::vector<std::string>& args) {
 
     int req = std::stoi(args[2]);
 
+    if (req <= 0) {
+        std::cout << "Error: size must be positive\n";
+        return;
+    }
+
     if (req > TOTAL_MEM_KB) {
-        std::cout << "Error: total memory " << TOTAL_MEM_KB << " kb\n";
+        std::cout << "Error: request exceeds total memory (" << TOTAL_MEM_KB << " KB)\n";
         return;
     }
 
@@ -203,7 +208,7 @@ void cmd_alloc(const std::vector<std::string>& args) {
     MemBlock* fit_block = algo_dispatch[get_algo_status()](req);
 
     if (!fit_block) {
-        std::cout << "Error: Not enough memory\n";
+        std::cout << "Error: not enough memory\n";
         return;
     }
 
@@ -255,7 +260,7 @@ void cmd_free_mem(const std::vector<std::string>& args) {
 
     for (const auto& tar : p->mem) {
         auto it = Mem.begin();
-        while (it->base != tar.base && it != Mem.end()) it++;
+        while (it != Mem.end() && it->base != tar.base) it++;
         if (it == Mem.end()) break;
         it->is_free = true;
         it->owner_pid = -1;
@@ -265,7 +270,7 @@ void cmd_free_mem(const std::vector<std::string>& args) {
     p->mem.clear();
 
     std::cout << "[OK] Free " << std::to_string(tol_fr) << 
-    "kb memory from process " << std::to_string(pid) << '\n';
+    "KB memory from process " << std::to_string(pid) << '\n';
 
     Merge_Fre_Mem_Blo();
 }
@@ -286,14 +291,16 @@ void cmd_compact(const std::vector<std::string>&) {
             it.base = new_base;
             new_base += it.size;
 
-            PCB* p = find_pcb(it.owner_pid);
+            PCB* pp = find_pcb(it.owner_pid);
 
-            auto owner_mem = 
-            std::find_if(p->mem.begin(), 
-            p->mem.end(), 
-            [&](Proc_Mem_Blo& x) { return x.base == old_base; });
+            if (pp) {
+                auto owner_mem =
+                std::find_if(pp->mem.begin(),
+                pp->mem.end(),
+                [&](Proc_Mem_Blo& x) { return x.base == old_base; });
 
-            owner_mem->base = it.base;
+                if (owner_mem != pp->mem.end()) owner_mem->base = it.base;
+            } else it.owner_pid = -1;
 
             Mem.emplace_back(it);
         }
@@ -308,7 +315,7 @@ void cmd_compact(const std::vector<std::string>&) {
                 true});
     }
     
-    std::cout << "[OK] Compact\n";
+    std::cout << "[OK] Memory compacted\n";
 }
 
 void cmd_pgfault(const std::vector<std::string>&) {
@@ -317,7 +324,7 @@ void cmd_pgfault(const std::vector<std::string>&) {
 
 void cmd_swap_out(const std::vector<std::string>& args) {
     if (args.size() < 3) {
-        std::cout << "swap_out <pid> <size_kb>\n";
+        std::cout << "Usage: swap_out <pid> <size_kb>\n";
         return;
     }
 
@@ -350,11 +357,15 @@ void cmd_swap_out(const std::vector<std::string>& args) {
     for (auto& it : p->mem) {
         if (swaped_kb >= tar_kb) break;
 
+        auto it_mem = std::find_if(Mem.begin(), Mem.end(),
+        [&](MemBlock& x) {return it.base == x.base;} );
+        if (it_mem != Mem.end()) Mem.erase(it_mem);
+
         it.is_swaped = 1;
         it.base = -1;
         swaped_kb += it.size;
     }
 
-    std::cout << "[INFO] Swapped out"<< swaped_kb 
-    << "KB from process " << p->name << "(" << std::to_string(pid) << ")\n";;
+    std::cout << "[INFO] Swapped out " << swaped_kb
+    << "KB from process " << p->name << "(" << std::to_string(pid) << ")\n";
 }

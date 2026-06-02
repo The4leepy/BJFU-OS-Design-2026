@@ -1,8 +1,10 @@
 #include <iostream>
 #include <iomanip>
 #include <unordered_map>
+#include <unordered_set>
 #include "process.h"
 #include "common.h"
+#include "memory.h"
 #include "user.h"
 
 static std::unordered_map<int, PCB> pcb_table;
@@ -46,9 +48,9 @@ PCB* find_pcb(int pid) {
     return nullptr;
 }
 
-void cmd_create_pcb(const std::vector<std::string>& args) {
+void cmd_create(const std::vector<std::string>& args) {
     if (args.size() < 3) {
-        std::cout << "Usage: create_pcb <name> <priority>\n";
+        std::cout << "Usage: create <name> <priority>\n";
         return;
     }
     if (args[1].length() > MAX_PCB_NAME) {
@@ -91,13 +93,13 @@ void cmd_create_pcb(const std::vector<std::string>& args) {
     << ", name=" << args[1] << ", priority=" << prio << "\n";
 }
 
-void cmd_show_pcb(const std::vector<std::string>& args) {
+void cmd_show(const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        std::cout << "Usage: show_pcb <pid>\n";
+        std::cout << "Usage: show <pid>\n";
         return;        
     }
 
-    int pid = stoi(args[1]);
+    int pid = std::stoi(args[1]);
 
     if (pid < 0 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
@@ -123,9 +125,9 @@ void cmd_show_pcb(const std::vector<std::string>& args) {
     }
 }
 
-void cmd_list_pcb(const std::vector<std::string>&) {
+void cmd_list(const std::vector<std::string>&) {
     if (pcb_table.empty()) {
-        std::cout << "No processes.\n";
+        std::cout << "No processes\n";
         return;
     }
     std::cout << std::left
@@ -183,9 +185,9 @@ void cmd_renice(const std::vector<std::string>& args) {
               << _old << " to " << prio << '\n';
 }
 
-void cmd_block_pcb(const std::vector<std::string>& args) {
+void cmd_block(const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        std::cout << "Usage: block_pcb <pid>\n";
+        std::cout << "Usage: block <pid>\n";
         return;
     }
 
@@ -206,16 +208,16 @@ void cmd_block_pcb(const std::vector<std::string>& args) {
         return;
     }
     if (p->state == Proc_State::BLOCKED) {
-        std::cout << "Process " << pid <<  " is already blocked\n";
+        std::cout << "[INFO] Process " << pid <<  " is already blocked\n";
         return;
     }
     p->state = Proc_State::BLOCKED;
     std::cout << "[OK] Block process " << pid << '\n';
 }
 
-void cmd_wakeup_pcb(const std::vector<std::string>& args) {
+void cmd_wakeup(const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        std::cout << "Usage: wakeup_pcb <pid>\n";
+        std::cout << "Usage: wakeup <pid>\n";
         return;
     }
 
@@ -236,16 +238,16 @@ void cmd_wakeup_pcb(const std::vector<std::string>& args) {
         return;
     }
     if (p->state != Proc_State::BLOCKED) {
-        std::cout << "Process " << pid << " is not blocked\n";
+        std::cout << "[INFO] Process " << pid << " is not blocked\n";
         return;
     }
     p->state = Proc_State::READY;
     std::cout << "[OK] Wakeup process " << pid << '\n';
 }
 
-void cmd_suspend_pcb(const std::vector<std::string>& args) {
+void cmd_suspend(const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        std::cout << "Usage: suspend_pcb <pid>\n";
+        std::cout << "Usage: suspend <pid>\n";
         return;
     }
 
@@ -266,16 +268,16 @@ void cmd_suspend_pcb(const std::vector<std::string>& args) {
         return;
     }
     if (p->state == Proc_State::SUSPENDED) {
-        std::cout << "Process " << pid << " already suspended\n";
+        std::cout << "[INFO] Process " << pid << " is already suspended\n";
         return;
     }
     p->state = Proc_State::SUSPENDED;
     std::cout << "[OK] Suspend process " << pid << '\n';
 }
 
-void cmd_resume_pcb(const std::vector<std::string>& args) {
+void cmd_resume(const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        std::cout << "Usage: resume_pcb <pid>\n";
+        std::cout << "Usage: resume <pid>\n";
         return;
     }
 
@@ -296,7 +298,7 @@ void cmd_resume_pcb(const std::vector<std::string>& args) {
         return;
     }
     if (p->state != Proc_State::SUSPENDED) {
-        std::cout << "Process " << pid << " is not suspended\n";
+        std::cout << "[INFO] Process " << pid << " is not suspended\n";
         return;
     }
     p->state = Proc_State::READY;
@@ -309,7 +311,10 @@ static std::string ptree_node(PCB* p) {
            ", mem=" + std::to_string(get_tol_size(p->mem)) + "KB]";
 }
 
-static void print_tree(int pid, const std::string& prefix, bool is_last) {
+static void print_tree(int pid, const std::string& prefix, bool is_last,
+                       std::unordered_set<int>& visited) {
+    if (!visited.insert(pid).second) return;
+    
     PCB* p = find_pcb(pid);
     if (!p) return;
     if (current_user != "root" && p->owner_user != current_user) return;
@@ -322,22 +327,24 @@ static void print_tree(int pid, const std::string& prefix, bool is_last) {
     for (size_t i = 0; i < p->child.size(); i++)
         print_tree(p->child[i],
                    prefix + (pid != 0 ? (is_last ? "   " : "│  ") : ""),
-                   i == p->child.size() - 1);
+                   i == p->child.size() - 1, visited);
 }
 
 void cmd_ptree(const std::vector<std::string>&) {
     if (!find_pcb(0)) {
-        std::cout << "No processes.\n";
+        std::cout << "No processes\n";
     } else {
-        print_tree(0, "", false);
+        std::unordered_set<int> visited;
+        print_tree(0, "", false, visited);
     }
 }
 
-void run_kill(int pid) {
+static void kill_impl(int pid, std::unordered_set<int>& visited) {
+    if (!visited.insert(pid).second) return;
     PCB* p = find_pcb(pid);
     if (!p) return;
 
-    for (int cpid : p->child) run_kill(cpid);
+    for (int cpid : p->child) kill_impl(cpid, visited);
 
     PCB* parent = find_pcb(p->ppid);
     if (parent) {
@@ -346,11 +353,18 @@ void run_kill(int pid) {
     }
 
     pcb_table.erase(pid);
+
+    cmd_free_mem({"free_mem",std::to_string(pid)});
 }
 
-void cmd_kill_pcb(const std::vector<std::string>& args) {
+void run_kill(int pid) {
+    std::unordered_set<int> visited;
+    kill_impl(pid, visited);
+}
+
+void cmd_kill(const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        std::cout << "Usage: kill_pcb <pid>\n";
+        std::cout << "Usage: kill <pid>\n";
         return;
     }
 
@@ -363,7 +377,7 @@ void cmd_kill_pcb(const std::vector<std::string>& args) {
 
     PCB* p = find_pcb(pid);
 
-    if (!p) std::cout << "No process.\n";
+    if (!p) std::cout << "Error: process " << pid << " not found\n";
     else if (!can_access(p)) std::cout << "Error: permission denied\n";
     else {
         run_kill(pid);

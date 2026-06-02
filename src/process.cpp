@@ -522,6 +522,11 @@ void load_processes(std::ifstream& f) {
 }
 
 void cmd_overview(const std::vector<std::string>&) {
+    if (current_user != "root" && !sudo_active) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
+
     std::cout << "\n=== System Overview ===\n\n";
 
     std::cout << "Process Tree:\n";

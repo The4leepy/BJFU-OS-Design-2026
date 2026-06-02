@@ -113,8 +113,8 @@ void cmd_register(const std::vector<std::string>& args) {
 }
 
 void cmd_login(const std::vector<std::string>& args) {
-    if (args.size() < 3) {
-        std::cout << "Usage: login <username> <password>\n";
+    if (args.size() < 2) {
+        std::cout << "Usage: login <username>\n";
         return;
     }
 
@@ -129,7 +129,10 @@ void cmd_login(const std::vector<std::string>& args) {
     }    
 
     int tries = 0;
-    std::string psd = args[2];
+    std::string psd = "";
+
+    std::cout << "Please enter the password : ";
+    std::getline(std::cin, psd);
 
     while (users[args[1]].password != psd) {
         tries++;

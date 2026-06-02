@@ -219,6 +219,12 @@ void cmd_renice(const std::vector<std::string>& args) {
     int _old = p->priority;
     p->priority = prio;
 
+    // 如果进程在队列中，移动到与新的优先级匹配的队列
+    if (p->state == Proc_State::READY) {
+        sched_dequeue(p->pid);
+        sched_enqueue(p->pid);
+    }
+
     std::cout << "[OK] Change process " << pid << " priority "
               << _old << " to " << prio << '\n';
 }
@@ -244,6 +250,10 @@ void cmd_block(const std::vector<std::string>& args) {
     }
     if (!can_access(p)) {
         std::cout << "Error: permission denied\n";
+        return;
+    }
+    if (pid == running_pid) {
+        std::cout << "Error: cannot block the currently running process\n";
         return;
     }
     if (p->state == Proc_State::BLOCKED) {
@@ -312,6 +322,10 @@ void cmd_suspend(const std::vector<std::string>& args) {
     }
     if (!can_access(p)) {
         std::cout << "Error: permission denied\n";
+        return;
+    }
+    if (pid == running_pid) {
+        std::cout << "Error: cannot suspend the currently running process\n";
         return;
     }
     if (p->state == Proc_State::SUSPENDED) {
@@ -398,7 +412,8 @@ static void kill_impl(int pid, std::unordered_set<int>& visited) {
     PCB* p = find_pcb(pid);
     if (!p) return;
 
-    for (int cpid : p->child) kill_impl(cpid, visited);
+    std::vector<int> children = p->child;
+    for (int cpid : children) kill_impl(cpid, visited);
 
     PCB* parent = find_pcb(p->ppid);
     if (parent) {

@@ -190,7 +190,10 @@ void start_background() {
                 std::cout.rdbuf(old_buf);
 
                 msg->result = ss.str();
-                msg->done = true;
+                {
+                    std::lock_guard<std::mutex> lock(msg_mtx);
+                    msg->done = true;
+                }
             }
             done_cv.notify_all();
 
@@ -235,7 +238,8 @@ void start_background() {
             // 3. 等待一段时间再检查
             int sleep_ms = sched_running ? 1000 : 200;
             std::unique_lock<std::mutex> lock(msg_mtx);
-            msg_cv.wait_for(lock, std::chrono::milliseconds(sleep_ms));
+            msg_cv.wait_for(lock, std::chrono::milliseconds(sleep_ms),
+                            [] { return !msg_queue.empty(); });
         }
     }).detach();
 }
@@ -257,6 +261,10 @@ void cmd_start(const std::vector<std::string>&) {
 }
 
 void cmd_stop(const std::vector<std::string>&) {
+    if (!is_master) {
+        std::cout << "[INFO] Viewer instance cannot control scheduler\n";
+        return;
+    }
     if (!sched_running) {
         std::cout << "[INFO] Scheduler is not running\n";
         return;

@@ -267,7 +267,7 @@ void cmd_free_mem(const std::vector<std::string>& args) {
     for (const auto& tar : p->mem) {
         auto it = Mem.begin();
         while (it != Mem.end() && it->base != tar.base) it++;
-        if (it == Mem.end()) break;
+        if (it == Mem.end()) continue;
         it->is_free = true;
         it->owner_pid = -1;
         tol_fr += it->size;
@@ -291,7 +291,7 @@ void free_process_mem(int pid) {
     for (const auto& tar : p->mem) {
         auto it = Mem.begin();
         while (it != Mem.end() && it->base != tar.base) it++;
-        if (it == Mem.end()) break;
+        if (it == Mem.end()) continue;
         it->is_free = true;
         it->owner_pid = -1;
     }
@@ -328,15 +328,16 @@ void cmd_compact(const std::vector<std::string>&) {
 
             Mem.emplace_back(it);
         }
-    }
 
-    int ne_base = Mem.back().base + Mem.back().size;
-
-
-    if (ne_base < TOTAL_MEM_KB) {
-        Mem.emplace_back(MemBlock{ne_base, 
-                   TOTAL_MEM_KB - ne_base, -1, 
-                true});
+        int ne_base = Mem.back().base + Mem.back().size;
+        if (ne_base < TOTAL_MEM_KB) {
+            Mem.emplace_back(MemBlock{ne_base,
+                       TOTAL_MEM_KB - ne_base, -1,
+                    true});
+        }
+    } else {
+        Mem.clear();
+        Mem.emplace_back(MemBlock{0, TOTAL_MEM_KB, -1, true});
     }
     
     std::cout << "[OK] Memory compacted\n";

@@ -74,7 +74,8 @@ static void cmd_help(const std::vector<std::string>& args) {
     for (auto& [cat, cmds] : groups) {
         std::cout << "\n=== " << titles[cat] << " ===\n";
         for (auto& [name, desc] : cmds)
-            printf("  %-18s - %s\n", name.c_str(), desc.c_str());
+            std::cout << "  " << std::left << std::setw(18) << name
+                      << " - " << desc << "\n";
     }
 
     if (filter.empty())

@@ -4,6 +4,9 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
+#include <queue>
+#include <memory>
 #include <fstream>
 #include <vector>
 #include <string>
@@ -16,24 +19,33 @@ inline std::deque<int> queues[3];
 inline int running_pid;
 inline int ticks_left;
 inline int total_ticks;
+
+// 调度开关：start_sched/stop_sched 控制
 inline std::atomic<bool> sched_running{false};
-inline std::thread sched_thread;
-inline std::mutex sched_mtx;
+
+// 消息队列 — 生产者(主线程) → 消费者(后台线程)
+struct SchedMsg {
+    std::vector<std::string> args;
+    std::string result;
+    bool done = false;
+};
+inline std::queue<std::shared_ptr<SchedMsg>> msg_queue;
+inline std::mutex msg_mtx;
+inline std::condition_variable msg_cv;   // 后台等新消息
+inline std::condition_variable done_cv;  // 主线程等结果
+
+inline std::mutex sched_mtx;  // 保护 pcb_table / Mem / queues
 
 void init_scheduler();
+void start_background();
 
 void sched_enqueue(int);
-
 void sched_dequeue(int);
 
 void cmd_step(const std::vector<std::string>&);
-
 void cmd_start(const std::vector<std::string>&);
-
 void cmd_stop(const std::vector<std::string>&);
-
 void cmd_restart(const std::vector<std::string>&);
 
 void save_scheduler(std::ofstream&);
-
 void load_scheduler(std::ifstream&);

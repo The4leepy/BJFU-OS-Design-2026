@@ -14,6 +14,7 @@ int main() {
     init_processes();
     init_memory();
     init_scheduler();
+    start_background();
 
     if (!auto_load()) first_time_setup();
 

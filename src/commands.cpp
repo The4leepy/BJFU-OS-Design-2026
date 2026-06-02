@@ -119,12 +119,44 @@ static struct _Init_Cmd {
     }
 } _init_Cmd;
 
-void dispatch(const std::vector<std::string>& args) {
+// 直接执行命令（后台线程用，不经过消息队列）
+void dispatch_direct(const std::vector<std::string>& args) {
     if (args.empty()) return;
     auto it = Cmd.find(args[0]);
-    if (it != Cmd.end()) {
+    if (it != Cmd.end())
         it->second.handler(args);
-    } else {
+    else
         std::cout << "Error: unknown command '" << args[0] << "'\n";
+}
+
+// 主线程用：交互命令直接执行，其他命令通过消息队列
+void dispatch(const std::vector<std::string>& args) {
+    if (args.empty()) return;
+
+    // 交互命令（需要读 cin 或需要主线程上下文）直接执行
+    if (args[0] == "exit" || args[0] == "login" || args[0] == "sudo") {
+        auto it = Cmd.find(args[0]);
+        if (it != Cmd.end()) it->second.handler(args);
+        else std::cout << "Error: unknown command '" << args[0] << "'\n";
+        return;
     }
+
+    // 其他命令打包成消息 → 后台线程执行
+    auto msg = std::make_shared<SchedMsg>();
+    msg->args = args;
+
+    {
+        std::lock_guard<std::mutex> lock(msg_mtx);
+        msg_queue.push(msg);
+    }
+    msg_cv.notify_one();
+
+    // 等待后台线程处理完毕
+    {
+        std::unique_lock<std::mutex> lock(msg_mtx);
+        done_cv.wait(lock, [&msg] { return msg->done; });
+    }
+
+    // 打印后台线程捕获的结果
+    std::cout << msg->result;
 }

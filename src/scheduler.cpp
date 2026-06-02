@@ -1,9 +1,10 @@
 #include <iostream>
 #include <algorithm>
+#include <sstream>
+#include <chrono>
 #include "scheduler.h"
 #include "process.h"
-
-static std::vector<std::string> output;
+#include "commands.h"
 
 static int pid_to_queue(int priority) {
     for (int q = 0; q < Q_COUNT; q++) {
@@ -22,7 +23,7 @@ void init_scheduler() {
 void sched_enqueue(int pid) {
     if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
-        return;        
+        return;
     }
 
     PCB* p = find_pcb(pid);
@@ -67,9 +68,9 @@ void sched_dequeue(int pid) {
 
         auto it = std::find(dq.begin(), dq.end(), pid);
 
-        if (it != dq.end()) { 
-            dq.erase(it); 
-            return; 
+        if (it != dq.end()) {
+            dq.erase(it);
+            return;
         }
     }
 }
@@ -94,6 +95,8 @@ static void sched_pick_next() {
     PCB* idle = find_pcb(0);
     if (idle) idle->state = Proc_State::RUNNING;
 }
+
+static std::vector<std::string> output;
 
 void scheduler_tick() {
     total_ticks++;
@@ -164,60 +167,59 @@ void cmd_step(const std::vector<std::string>&) {
     }
 }
 
-static void sched_loop() {
-    while (sched_running) {
-        sched_mtx.lock();
+// ============ 后台线程的消息循环 ============
 
-        int prev_pid = running_pid;
-        std::string prev_name;
-        int prev_cpu = 0, prev_needed = 0;
-        if (PCB* prev = find_pcb(prev_pid)) {
-            prev_name = prev->name;
-            prev_cpu = prev->cpu_time;
-            prev_needed = prev->cpu_needed;
-        }
+void start_background() {
+    std::thread([]() {
+        while (true) {
+            // 1. 处理消息队列中的所有消息
+            while (true) {
+                std::shared_ptr<SchedMsg> msg;
+                {
+                    std::lock_guard<std::mutex> lock(msg_mtx);
+                    if (msg_queue.empty()) break;
+                    msg = msg_queue.front();
+                    msg_queue.pop();
+                }
+                if (!msg) break;
 
-        scheduler_tick();
+                // cout 重定向：命令的输出全部捕获到字符串
+                std::stringstream ss;
+                auto old_buf = std::cout.rdbuf(ss.rdbuf());
+                {
+                    std::lock_guard<std::mutex> lock(sched_mtx);
+                    dispatch_direct(msg->args);
+                }
+                std::cout.rdbuf(old_buf);
 
-        std::string o_info;
-
-        if (prev_pid != 0) {
-            PCB* p = find_pcb(prev_pid);
-            if (p) {
-                o_info = "[STEP] pid=" + std::to_string(prev_pid)
-                       + " name=" + p->name
-                       + " cpu=" + std::to_string(p->cpu_time)
-                       + "/" + std::to_string(p->cpu_needed);
-                if (p->state != Proc_State::RUNNING)
-                    o_info += " (time slice expired)";
-                o_info += "\n";
-            } else {
-                o_info = "[STEP] pid=" + std::to_string(prev_pid)
-                       + " name=" + prev_name
-                       + " cpu=" + std::to_string(prev_cpu + 1)
-                       + "/" + std::to_string(prev_needed)
-                       + " [completed]\n";
+                msg->result = ss.str();
+                msg->done = true;
             }
-        } else {
-            o_info = "[STEP] idle\n";
-        }
-        output.emplace_back(o_info);
+            done_cv.notify_all();
 
-        sched_mtx.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-} 
+            // 2. 如果调度器在运行，执行一个 tick
+            if (sched_running) {
+                std::lock_guard<std::mutex> lock(sched_mtx);
+                scheduler_tick();
+            }
+
+            // 3. 等待一段时间再检查
+            int sleep_ms = sched_running ? 1000 : 200;
+            std::unique_lock<std::mutex> lock(msg_mtx);
+            msg_cv.wait_for(lock, std::chrono::milliseconds(sleep_ms));
+        }
+    }).detach();
+}
+
+// ============ 调度器开关命令 ============
 
 void cmd_start(const std::vector<std::string>&) {
     if (sched_running) {
         std::cout << "[INFO] Scheduler is already running\n";
         return;
     }
-
     output.clear();
     sched_running = true;
-    sched_thread = std::thread(sched_loop);
-
     std::cout << "[OK] Scheduler started\n";
 }
 
@@ -226,13 +228,14 @@ void cmd_stop(const std::vector<std::string>&) {
         std::cout << "[INFO] Scheduler is not running\n";
         return;
     }
-
     sched_running = false;
-    if (sched_thread.joinable()) sched_thread.join();
 
-    for (std::string& info : output) {
+    // 等待当前 tick 完成
+    std::lock_guard<std::mutex> lock(sched_mtx);
+
+    for (const std::string& info : output)
         std::cout << info;
-    }
+    output.clear();
 
     std::cout << "[OK] Scheduler stopped\n";
 }
@@ -241,6 +244,8 @@ void cmd_restart(const std::vector<std::string>&) {
     cmd_stop({});
     cmd_start({});
 }
+
+// ============ 持久化 ============
 
 void save_scheduler(std::ofstream& f) {
     f.write(reinterpret_cast<const char*>(&total_ticks), sizeof(total_ticks));

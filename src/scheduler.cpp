@@ -17,6 +17,17 @@ void init_scheduler() {
     running_pid = 0;
 }
 
+void scheduler_tick();
+
+static void sched_loop() {
+    while (sched_running) {
+        sched_mtx.lock();
+        scheduler_tick();
+        sched_mtx.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+} 
+
 void sched_enqueue(int pid) {
     if (pid < 3 || pid >= MAX_PID) {
         std::cout << "Error: pid invalid\n";
@@ -140,4 +151,33 @@ void cmd_step(const std::vector<std::string>&) {
     } else {
         std::cout << "[STEP] idle\n";
     }
+}
+
+void cmd_start(const std::vector<std::string>&) {
+    if (sched_running) {
+        std::cout << "[INFO] Scheduler is already running\n";
+        return;
+    }
+
+    sched_running = true;
+    sched_thread = std::thread(sched_loop);
+
+    std::cout << "[OK] Scheduler started\n";
+}
+
+void cmd_stop(const std::vector<std::string>&) {
+    if (!sched_running) {
+        std::cout << "[INFO] Scheduler is not running\n";
+        return;
+    }
+
+    sched_running = false;
+    if (sched_thread.joinable()) sched_thread.join();
+
+    std::cout << "[OK] Scheduler stopped\n";
+}
+
+void cmd_restart(const std::vector<std::string>&) {
+    cmd_stop({});
+    cmd_start({});
 }

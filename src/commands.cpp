@@ -102,6 +102,9 @@ static struct _Init_Cmd {
         Cmd["swap_out"]       = {cmd_swap_out,       "Swap out process memory",    "Memory"};
         // Scheduler
         Cmd["step"]            = {cmd_step,            "Execute one scheduler tick", "Scheduler"};
+        Cmd["start"]           = {cmd_start,           "Start background scheduler", "Scheduler"};
+        Cmd["stop"]            = {cmd_stop,            "Stop background scheduler",  "Scheduler"};
+        Cmd["restart"]         = {cmd_restart,         "Restart background scheduler","Scheduler"};
     }
 } _init_Cmd;
 

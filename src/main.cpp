@@ -14,7 +14,13 @@ int main() {
     init_processes();
     init_memory();
     init_scheduler();
-    start_background();
+
+    if (try_lock_master()) {
+        start_background();
+        std::cout << "[INFO] Running as master instance\n";
+    } else {
+        std::cout << "[INFO] Running as viewer (another instance is master)\n";
+    }
 
     if (!auto_load()) first_time_setup();
 

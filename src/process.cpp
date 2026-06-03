@@ -164,6 +164,14 @@ void cmd_list(const std::vector<std::string>&) {
         std::cout << "No processes\n";
         return;
     }
+
+    std::vector<const PCB*> s;
+    for (const auto& [_, _p] : pcb_table) {
+        s.emplace_back(&_p);
+    }
+    std::sort(s.begin(), s.end(), 
+    [](const PCB* x, const PCB* y){ return x->pid < y->pid; });
+
     std::cout << std::left
               << std::setw(6)  << "PID"
               << std::setw(12) << "NAME"
@@ -172,15 +180,15 @@ void cmd_list(const std::vector<std::string>&) {
               << std::setw(8)  << "MEM"
               << "CPU\n"
               << std::string(54, '-') << '\n';
-    for (const auto& [_, p] : pcb_table) {
-        if (!can_access(&p)) continue;
+    for (const auto p : s) {
+        if (!can_access(p)) continue;
         std::cout << std::left
-                  << std::setw(6)  << p.pid
-                  << std::setw(12) << p.name
-                  << std::setw(10) << state_name(p.state)
-                  << std::setw(6)  << p.priority
-                  << std::setw(8)  << (std::to_string(get_tol_size(p.mem)) + "KB")
-                  << p.cpu_time << "/" << p.cpu_needed << '\n';
+                  << std::setw(6)  << p->pid
+                  << std::setw(12) << p->name
+                  << std::setw(10) << state_name(p->state)
+                  << std::setw(6)  << p->priority
+                  << std::setw(8)  << (std::to_string(get_tol_size(p->mem)) + "KB")
+                  << p->cpu_time << "/" << p->cpu_needed << '\n';
     }
 }
 

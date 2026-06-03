@@ -172,16 +172,15 @@ void cmd_step(const std::vector<std::string>&) {
 void start_background() {
     std::thread([]() {
         while (true) {
-            while (true) {
-                std::shared_ptr<SchedMsg> msg;
-                {
-                    std::lock_guard<std::mutex> lock(msg_mtx);
-                    if (msg_queue.empty()) break;
+            std::shared_ptr<SchedMsg> msg;
+            {
+                std::lock_guard<std::mutex> lock(msg_mtx);
+                if (!msg_queue.empty()) {
                     msg = msg_queue.front();
                     msg_queue.pop();
                 }
-                if (!msg) break;
-
+            }
+            if (msg) {
                 std::stringstream ss;
                 auto old_buf = std::cout.rdbuf(ss.rdbuf());
                 {
@@ -195,8 +194,8 @@ void start_background() {
                     std::lock_guard<std::mutex> lock(msg_mtx);
                     msg->done = true;
                 }
+                done_cv.notify_all();
             }
-            done_cv.notify_all();
 
             std::unique_lock<std::mutex> lock(msg_mtx);
             msg_cv.wait_for(lock, std::chrono::milliseconds(200),

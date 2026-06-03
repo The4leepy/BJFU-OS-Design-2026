@@ -388,7 +388,11 @@ void cmd_swap_out(const std::vector<std::string>& args) {
 
         auto it_mem = std::find_if(Mem.begin(), Mem.end(),
         [&](MemBlock& x) {return it.base == x.base;} );
-        if (it_mem != Mem.end()) Mem.erase(it_mem);
+        if (it_mem != Mem.end()) {
+            it_mem->owner_pid = -1;
+            it_mem->is_free = true;
+            Merge_Fre_Mem_Blo();
+        }
 
         it.is_swaped = 1;
         it.base = -1;

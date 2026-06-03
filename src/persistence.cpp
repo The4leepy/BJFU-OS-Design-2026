@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <cstdio>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -9,33 +10,6 @@
 #include "scheduler.h"
 #include "memory.h"
 #include "user.h"
-
-bool auto_load() {
-    std::ifstream file("os_state.bin", std::ios::binary);
-    if (!file) return false;
-
-    load_scheduler(file);
-    load_processes(file);
-    load_memory(file);
-    load_users(file);
-
-    return true;
-}
-
-void save_on_exit() {
-    std::ofstream file("os_state.bin", std::ios::binary | std::ios::trunc);
-    if (!file) {
-        std::cout << "Error: cannot save state\n";
-        return;
-    }
-
-    save_scheduler(file);
-    save_processes(file);
-    save_memory(file);
-    save_users(file);
-
-    std::cout << "[OK] State saved to os_state.bin\n";
-}
 
 static int lock_fd = -1;
 
@@ -50,13 +24,49 @@ bool try_lock_master() {
     return true;
 }
 
+void save_on_exit() {
+    std::lock_guard<std::mutex> lock(sched_mtx);
+    std::ofstream file("os_state.bin.tmp", std::ios::binary | std::ios::trunc);
+    if (!file) {
+        std::cout << "Error: cannot save state\n";
+        return;
+    }
+
+    save_scheduler(file);
+    save_processes(file);
+    save_memory(file);
+    save_users(file);
+    file.close();
+
+    if (std::rename("os_state.bin.tmp", "os_state.bin") != 0) {
+        std::cout << "Error: cannot save state\n";
+        return;
+    }
+    std::cout << "[OK] State saved to os_state.bin\n";
+}
+
 void auto_save() {
-    std::ofstream file("os_state.bin", std::ios::binary | std::ios::trunc);
+    std::lock_guard<std::mutex> lock(sched_mtx);
+    std::ofstream file("os_state.bin.tmp", std::ios::binary | std::ios::trunc);
     if (!file) return;
     save_scheduler(file);
     save_processes(file);
     save_memory(file);
     save_users(file);
+    file.close();
+    std::rename("os_state.bin.tmp", "os_state.bin");
+}
+
+bool auto_load() {
+    std::ifstream file("os_state.bin", std::ios::binary);
+    if (!file) return false;
+
+    load_scheduler(file);
+    load_processes(file);
+    load_memory(file);
+    load_users(file);
+
+    return true;
 }
 
 static time_t last_mtime = 0;

@@ -10,6 +10,7 @@
 #include "user.h"
 #include "scheduler.h"
 #include "persistence.h"
+#include "splash.h"
 
 using Cmd_handler = std::function<void(std::vector<std::string>)>;
 
@@ -37,11 +38,7 @@ static void cmd_exit(const std::vector<std::string>&) {
 
 static void cmd_clear(const std::vector<std::string>&) {
     std::cout << "\033[3J\033[2J\033[H" << std::flush;
-    std::cout << "========================================\n";
-    std::cout << "  OS Core Simulator v1.0\n";
-    std::cout << "  Type 'help' for commands\n";
-    std::cout << "  Type 'exit' to exit\n";
-    std::cout << "========================================\n";
+    print_splash_banner();
 }
 
 static void cmd_help(const std::vector<std::string>& args) {
@@ -88,7 +85,9 @@ static struct _Init_Cmd {
         Cmd["register"] = {cmd_register, "Register a new user",       "User"};
         Cmd["login"]    = {cmd_login,    "Login to the system",       "User"};
         Cmd["logout"]   = {cmd_logout,   "Logout from the system",    "User"};
-        Cmd["sudo"]     = {cmd_sudo,     "Execute command as root",    "User"};
+        Cmd["sudo"]       = {cmd_sudo,       "Execute command as root",    "User"};
+        Cmd["unlock"]     = {cmd_unlock,     "Unlock a locked user",       "User"};
+        Cmd["show_users"] = {cmd_show_users, "Show all registered users",  "User"};
         // System
         Cmd["help"]  = {cmd_help,  "Show help [process|memory|system]", "System"};
         Cmd["clear"] = {cmd_clear, "Clear terminal screen",          "System"};
@@ -139,7 +138,7 @@ void dispatch(const std::vector<std::string>& args) {
     if (args[0] == "exit" || args[0] == "login" || args[0] == "sudo") {
         auto it = Cmd.find(args[0]);
         if (it != Cmd.end()) it->second.handler(args);
-        else std::cout << "Error: unknown command '" << args[0] << "'\n";
+        else std::cout << "Error: unknown command '" << args[0] << "\n";
         if (is_master) auto_save();
         return;
     }

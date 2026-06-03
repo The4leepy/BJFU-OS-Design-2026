@@ -218,3 +218,43 @@ void load_users(std::ifstream& f) {
     f.read(&sudo_flag, 1);
     sudo_active = (sudo_flag != 0);
 }
+
+void cmd_unlock(const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        std::cout << "Usage: unlock <username>\n";
+        return;
+    }
+
+    if (current_user != "root" && !sudo_active) {
+        std::cout << "Error: permission denied\n";
+        return;
+    }
+
+    if (users.find(args[1]) == users.end()) {
+        std::cout << "Error: user does not exist\n";
+        return;
+    }
+
+    users[args[1]].locked = false;
+
+    std::cout << "[OK] user " << args[1] << " unlocked\n";
+}
+
+void cmd_show_users(const std::vector<std::string>&) {
+    if (users.empty()) {
+        std::cout << "No registered users.\n";
+        return;
+    }
+    std::cout << std::left
+              << std::setw(16) << "USERNAME"
+              << std::setw(10) << "STATUS" << '\n'
+              << std::string(26, '-') << '\n';
+    for (const auto& [name, u] : users) {
+        std::cout << std::left
+                  << std::setw(16) << name
+                  << std::setw(10)
+                  << (name == current_user ? "online" :
+                      (u.locked ? "locked" : "offline"))
+                  << '\n';
+    }
+}

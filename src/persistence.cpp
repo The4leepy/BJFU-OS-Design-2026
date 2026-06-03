@@ -58,15 +58,8 @@ void auto_save() {
 }
 
 bool auto_load() {
-    std::cout << "\033[3J\033[2J\033[H" << std::flush;
     std::ifstream file("os_state.bin", std::ios::binary);
     if (!file) return false;
-    
-    std::cout << "Load previous state? (y/n): ";
-    std::string ans;
-    std::getline(std::cin, ans);
-
-    if (ans == "n" || ans == "N") return false;
 
     load_scheduler(file);
     load_processes(file);

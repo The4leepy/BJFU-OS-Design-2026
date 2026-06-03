@@ -232,7 +232,7 @@ void cmd_start(const std::vector<std::string>&) {
     output.clear();
     sched_running = true;
 
-    sched_thread = std::thread([]{ sched_loop(); });
+    sched_thread = std::thread(sched_loop);
 
     std::cout << "[OK] Scheduler started\n";
 }

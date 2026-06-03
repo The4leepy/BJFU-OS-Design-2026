@@ -19,19 +19,15 @@ inline bool sudo_active = false;
 struct PCB;
 
 bool can_access(const PCB* p);
-
 void init_users();
-
 void first_time_setup();
 
 void cmd_register(const std::vector<std::string>&);
-
 void cmd_login(const std::vector<std::string>&);
-
 void cmd_logout(const std::vector<std::string>&);
-
 void cmd_sudo(const std::vector<std::string>&);
+void cmd_unlock(const std::vector<std::string>&);
+void cmd_show_users(const std::vector<std::string>&);
 
 void save_users(std::ofstream&);
-
 void load_users(std::ifstream&);

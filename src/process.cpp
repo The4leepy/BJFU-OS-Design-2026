@@ -219,7 +219,6 @@ void cmd_renice(const std::vector<std::string>& args) {
     int _old = p->priority;
     p->priority = prio;
 
-    // 如果进程在队列中，移动到与新的优先级匹配的队列
     if (p->state == Proc_State::READY) {
         sched_dequeue(p->pid);
         sched_enqueue(p->pid);

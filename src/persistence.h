@@ -19,7 +19,9 @@ inline std::string read_str(std::ifstream& f) {
 }
 
 bool auto_load();
-
 void save_on_exit();
 
 bool try_lock_master();
+
+void auto_save();
+void check_reload();

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "persistence.h"
@@ -18,7 +19,6 @@ bool auto_load() {
     load_memory(file);
     load_users(file);
 
-    std::cout << "[INFO] State loaded from os_state.bin\n";
     return true;
 }
 
@@ -48,4 +48,24 @@ bool try_lock_master() {
         return false;
     }
     return true;
+}
+
+void auto_save() {
+    std::ofstream file("os_state.bin", std::ios::binary | std::ios::trunc);
+    if (!file) return;
+    save_scheduler(file);
+    save_processes(file);
+    save_memory(file);
+    save_users(file);
+}
+
+static time_t last_mtime = 0;
+
+void check_reload() {
+    struct stat st;
+    if (stat("os_state.bin", &st) != 0) return;
+    if (st.st_mtime != last_mtime) {
+        last_mtime = st.st_mtime;
+        auto_load();
+    }
 }

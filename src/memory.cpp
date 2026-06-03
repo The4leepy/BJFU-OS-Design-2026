@@ -263,9 +263,10 @@ void cmd_free_mem(const std::vector<std::string>& args) {
     [](Proc_Mem_Blo& x, Proc_Mem_Blo& y) { return x.base < y.base; });
 
     int tol_fr = 0;
+    auto it = Mem.begin();
 
     for (const auto& tar : p->mem) {
-        auto it = Mem.begin();
+        
         while (it != Mem.end() && it->base != tar.base) it++;
         if (it == Mem.end()) continue;
         it->is_free = true;
@@ -288,8 +289,9 @@ void free_process_mem(int pid) {
     std::sort(p->mem.begin(), p->mem.end(),
     [](Proc_Mem_Blo& x, Proc_Mem_Blo& y) { return x.base < y.base; });
 
+    auto it = Mem.begin();
+
     for (const auto& tar : p->mem) {
-        auto it = Mem.begin();
         while (it != Mem.end() && it->base != tar.base) it++;
         if (it == Mem.end()) continue;
         it->is_free = true;

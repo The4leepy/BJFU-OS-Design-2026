@@ -16,12 +16,12 @@ int main() {
     init_processes();
     init_memory();
     init_scheduler();
-    std::cout << "\033[3J\033[2J\033[H" << std::flush;
     
+    std::cout << "\033[3J\033[2J\033[H" << std::flush;
     if (!auto_load()) first_time_setup();
 
+    start_background();
     if (try_lock_master()) {
-        start_background();
         is_master = true;
         std::cout << "[INFO] Running as master instance\n";
     } else {

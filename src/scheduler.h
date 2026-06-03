@@ -20,10 +20,8 @@ inline int running_pid;
 inline int ticks_left;
 inline int total_ticks;
 
-// 调度开关：start_sched/stop_sched 控制
 inline std::atomic<bool> sched_running{false};
 
-// 消息队列 — 生产者(主线程) → 消费者(后台线程)
 struct SchedMsg {
     std::vector<std::string> args;
     std::string result;
@@ -31,10 +29,10 @@ struct SchedMsg {
 };
 inline std::queue<std::shared_ptr<SchedMsg>> msg_queue;
 inline std::mutex msg_mtx;
-inline std::condition_variable msg_cv;   // 后台等新消息
-inline std::condition_variable done_cv;  // 主线程等结果
+inline std::mutex sched_mtx;
+inline std::condition_variable msg_cv;
+inline std::condition_variable done_cv;
 
-inline std::mutex sched_mtx;  // 保护 pcb_table / Mem / queues
 inline bool is_master = true;
 
 void init_scheduler();

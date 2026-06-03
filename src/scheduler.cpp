@@ -13,6 +13,8 @@ static int pid_to_queue(int priority) {
     return Q_COUNT - 1;
 }
 
+static std::thread sched_thread;
+
 void init_scheduler() {
     for (int q = 0; q < Q_COUNT; q++) queues[q].clear();
     ticks_left = 0;
@@ -167,12 +169,9 @@ void cmd_step(const std::vector<std::string>&) {
     }
 }
 
-// ============ 后台线程的消息循环 ============
-
 void start_background() {
     std::thread([]() {
         while (true) {
-            // 1. 处理消息队列中的所有消息
             while (true) {
                 std::shared_ptr<SchedMsg> msg;
                 {
@@ -183,10 +182,12 @@ void start_background() {
                 }
                 if (!msg) break;
 
-                // cout 重定向：命令的输出全部捕获到字符串
                 std::stringstream ss;
                 auto old_buf = std::cout.rdbuf(ss.rdbuf());
-                dispatch_direct(msg->args);
+                {
+                    std::lock_guard<std::mutex> lock(sched_mtx);
+                    dispatch_direct(msg->args);
+                }
                 std::cout.rdbuf(old_buf);
 
                 msg->result = ss.str();
@@ -197,79 +198,50 @@ void start_background() {
             }
             done_cv.notify_all();
 
-            // 2. 如果调度器在运行，执行一个 tick
-            if (sched_running) {
-                int prev_pid = running_pid;
-                std::string prev_name;
-                int prev_cpu = 0, prev_needed = 0;
-                if (PCB* prev = find_pcb(prev_pid)) {
-                    prev_name = prev->name;
-                    prev_cpu = prev->cpu_time;
-                    prev_needed = prev->cpu_needed;
-                }
-
-                std::lock_guard<std::mutex> lock(sched_mtx);
-                scheduler_tick();
-
-                std::string o_info;
-                if (prev_pid != 0) {
-                    PCB* p = find_pcb(prev_pid);
-                    if (p) {
-                        o_info = "[STEP] pid=" + std::to_string(prev_pid)
-                               + " name=" + p->name
-                               + " cpu=" + std::to_string(p->cpu_time)
-                               + "/" + std::to_string(p->cpu_needed);
-                        if (p->state != Proc_State::RUNNING)
-                            o_info += " (time slice expired)";
-                        o_info += "\n";
-                    } else {
-                        o_info = "[STEP] pid=" + std::to_string(prev_pid)
-                               + " name=" + prev_name
-                               + " cpu=" + std::to_string(prev_cpu + 1)
-                               + "/" + std::to_string(prev_needed)
-                               + " [completed]\n";
-                    }
-                } else {
-                    o_info = "[STEP] idle\n";
-                }
-                output.emplace_back(o_info);
-            }
-
-            // 3. 等待一段时间再检查
-            int sleep_ms = sched_running ? 1000 : 200;
             std::unique_lock<std::mutex> lock(msg_mtx);
-            msg_cv.wait_for(lock, std::chrono::milliseconds(sleep_ms),
+            msg_cv.wait_for(lock, std::chrono::milliseconds(200),
                             [] { return !msg_queue.empty(); });
         }
     }).detach();
 }
 
-// ============ 调度器开关命令 ============
+void sched_loop() {
+    while (sched_running) {
+        std::stringstream ss;
+        auto old_buf = std::cout.rdbuf(ss.rdbuf());
+        
+        {
+            std::lock_guard<std::mutex> lock(sched_mtx);
+            cmd_step({});
+        }
+        std::cout.rdbuf(old_buf);
+
+        output.emplace_back(ss.str());
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+}
 
 void cmd_start(const std::vector<std::string>&) {
-    if (!is_master) {
-        std::cout << "[INFO] Viewer instance cannot control scheduler\n";
-        return;
-    }
     if (sched_running) {
         std::cout << "[INFO] Scheduler is already running\n";
         return;
     }
     output.clear();
     sched_running = true;
+
+    sched_thread = std::thread([]{ sched_loop(); });
+
     std::cout << "[OK] Scheduler started\n";
 }
 
 void cmd_stop(const std::vector<std::string>&) {
-    if (!is_master) {
-        std::cout << "[INFO] Viewer instance cannot control scheduler\n";
-        return;
-    }
     if (!sched_running) {
         std::cout << "[INFO] Scheduler is not running\n";
         return;
     }
     sched_running = false;
+    if (sched_thread.joinable()) sched_thread.join();
 
     for (const std::string& info : output)
         std::cout << info;
@@ -282,8 +254,6 @@ void cmd_restart(const std::vector<std::string>&) {
     cmd_stop({});
     cmd_start({});
 }
-
-// ============ 持久化 ============
 
 void save_scheduler(std::ofstream& f) {
     f.write(reinterpret_cast<const char*>(&total_ticks), sizeof(total_ticks));

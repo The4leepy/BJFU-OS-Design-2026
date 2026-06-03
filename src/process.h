@@ -61,31 +61,19 @@ struct PCB {
 void init_processes();
 
 PCB* find_pcb(int pid);
-
 void run_kill(int pid);
 
 void cmd_create(const std::vector<std::string>&);
-
 void cmd_show(const std::vector<std::string>&);
-
 void cmd_list(const std::vector<std::string>&);
-
 void cmd_renice(const std::vector<std::string>&);
-
 void cmd_block(const std::vector<std::string>&);
-
 void cmd_wakeup(const std::vector<std::string>&);
-
 void cmd_suspend(const std::vector<std::string>&);
-
 void cmd_resume(const std::vector<std::string>&);
-
 void cmd_ptree(const std::vector<std::string>&);
-
 void cmd_kill(const std::vector<std::string>&);
-
 void cmd_overview(const std::vector<std::string>&);
 
 void save_processes(std::ofstream&);
-
 void load_processes(std::ifstream&);

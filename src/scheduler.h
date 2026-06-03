@@ -27,7 +27,7 @@ struct SchedMsg {
     std::string result;
     bool done = false;
 };
-inline std::queue<std::shared_ptr<SchedMsg>> msg_queue;
+inline std::queue<SchedMsg*> msg_queue;
 inline std::mutex msg_mtx;
 inline std::mutex sched_mtx;
 inline std::condition_variable msg_cv;

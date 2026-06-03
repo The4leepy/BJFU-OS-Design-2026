@@ -144,7 +144,7 @@ void dispatch(const std::vector<std::string>& args) {
         return;
     }
 
-    auto msg = std::make_shared<SchedMsg>();
+    SchedMsg* msg = new SchedMsg;
     msg->args = args;
 
     {
@@ -159,5 +159,7 @@ void dispatch(const std::vector<std::string>& args) {
     }
 
     std::cout << msg->result;
+    delete msg;
+
     if (is_master) auto_save();
 }

@@ -172,7 +172,8 @@ void cmd_step(const std::vector<std::string>&) {
 void start_background() {
     std::thread([]() {
         while (true) {
-            std::shared_ptr<SchedMsg> msg;
+            SchedMsg* msg = nullptr;
+
             {
                 std::lock_guard<std::mutex> lock(msg_mtx);
                 if (!msg_queue.empty()) {
@@ -180,6 +181,7 @@ void start_background() {
                     msg_queue.pop();
                 }
             }
+
             if (msg) {
                 std::stringstream ss;
                 auto old_buf = std::cout.rdbuf(ss.rdbuf());
@@ -213,6 +215,7 @@ void sched_loop() {
             std::lock_guard<std::mutex> lock(sched_mtx);
             cmd_step({});
         }
+        
         std::cout.rdbuf(old_buf);
 
         output.emplace_back(ss.str());

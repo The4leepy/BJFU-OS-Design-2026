@@ -23,14 +23,7 @@ struct CmdInfo {
 static std::unordered_map<std::string, CmdInfo> Cmd;
 
 static void cmd_exit(const std::vector<std::string>&) {
-    if (is_master) {
-        std::cout << "Save state? (y/n): ";
-
-        std::string ans;
-        std::getline(std::cin, ans);
-    }
     std::cout << "Goodbye\n";
-
     exit_requested = true;
 }
 

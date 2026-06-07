@@ -25,8 +25,8 @@ struct PCB {
 
     std::vector<Proc_Mem_Blo> mem;
 
-    int cpu_time;
-    int cpu_needed;
+    int cpu_time = 0;
+    int cpu_needed = 0;
 
     std::vector<int> child;
 

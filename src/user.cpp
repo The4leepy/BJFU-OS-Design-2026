@@ -130,29 +130,25 @@ void cmd_login(const std::vector<std::string>& args) {
     }    
 
     int tries = 0;
-    std::string psd = "";
+    std::string psd;
 
-    std::cout << "Please enter the password : ";
-    std::getline(std::cin, psd);
+    while (tries < MAX_LOGIN_ATTEMPTS) {
+        std::cout << "Password: ";
+        std::getline(std::cin, psd);
 
-    while (users[args[1]].password != psd) {
+        if (users[args[1]].password == psd) break;
+
         tries++;
-
         std::cout << "Error: incorrect password\n";
 
         if (tries >= MAX_LOGIN_ATTEMPTS) {
             users[args[1]].locked = true;
-
             std::cout << "[INFO] User " << args[1] << " locked\n";
-            
             return;
         }
 
         std::cout << "[INFO] " << MAX_LOGIN_ATTEMPTS - tries
                   << " chances left\n";
-
-        std::cout << "Please enter the password again: ";
-        std::getline(std::cin, psd);
     }
 
     current_user = args[1];

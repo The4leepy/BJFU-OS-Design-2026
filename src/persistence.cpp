@@ -24,27 +24,6 @@ bool try_lock_master() {
     return true;
 }
 
-void save_on_exit() {
-    std::lock_guard<std::mutex> lock(sched_mtx);
-    std::ofstream file("os_state.bin.tmp", std::ios::binary | std::ios::trunc);
-    if (!file) {
-        std::cout << "Error: cannot save state\n";
-        return;
-    }
-
-    save_scheduler(file);
-    save_processes(file);
-    save_memory(file);
-    save_users(file);
-    file.close();
-
-    if (std::rename("os_state.bin.tmp", "os_state.bin") != 0) {
-        std::cout << "Error: cannot save state\n";
-        return;
-    }
-    std::cout << "[OK] State saved to os_state.bin\n";
-}
-
 void auto_save() {
     std::lock_guard<std::mutex> lock(sched_mtx);
     std::ofstream file("os_state.bin.tmp", std::ios::binary | std::ios::trunc);
@@ -67,6 +46,16 @@ bool auto_load() {
     load_users(file);
 
     return true;
+}
+
+bool load() {
+    std::ifstream file("os_state.bin", std::ios::binary);
+    if (!file) return false;
+    std::cout << "Load previous data? (y/n): ";
+    std::string ans;
+    std::getline(std::cin, ans);
+    if (ans == "y" || ans == "Y") return auto_load();
+    return false;
 }
 
 static time_t last_mtime = 0;

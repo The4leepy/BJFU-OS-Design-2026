@@ -28,8 +28,6 @@ static void cmd_exit(const std::vector<std::string>&) {
 
         std::string ans;
         std::getline(std::cin, ans);
-
-        if (ans == "y" || ans == "Y") save_on_exit();
     }
     std::cout << "Goodbye\n";
 

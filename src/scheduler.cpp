@@ -165,7 +165,7 @@ void cmd_step(const std::vector<std::string>&) {
                     << " [completed]\n";
         }
     } else {
-        std::cout << "[STEP] idle\n";
+        std::cout << "[STEP] swapper\n";
     }
 }
 

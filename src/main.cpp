@@ -18,16 +18,16 @@ int main() {
     init_memory();
     init_scheduler();
     
-    if (!auto_load()) first_time_setup();
-
     start_background();
     show_splash();
     if (try_lock_master()) {
         is_master = true;
         std::cout << "[INFO] Running as master instance\n";
+        if (!load()) first_time_setup();
     } else {
         is_master = false;
         std::cout << "[INFO] Running as viewer (another instance is master)\n";
+        auto_load();
     }
 
     std::string line;

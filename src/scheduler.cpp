@@ -80,8 +80,8 @@ void sched_dequeue(int pid) {
 static void sched_pick_next() {
     for (int q = 0; q < Q_COUNT; q++) {
         if (!queues[q].empty()) {
-            PCB* idle = find_pcb(0);
-            if (idle) idle->state = Proc_State::READY;
+            PCB* swapper = find_pcb(0);
+            if (swapper) swapper->state = Proc_State::READY;
 
             running_pid = queues[q].front();
             queues[q].pop_front();
@@ -94,8 +94,8 @@ static void sched_pick_next() {
     }
 
     running_pid = 0;
-    PCB* idle = find_pcb(0);
-    if (idle) idle->state = Proc_State::RUNNING;
+    PCB* swapper = find_pcb(0);
+    if (swapper) swapper->state = Proc_State::RUNNING;
 }
 
 static std::vector<std::string> output;

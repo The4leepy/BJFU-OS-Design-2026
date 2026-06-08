@@ -4,6 +4,12 @@
 #include <list>
 #include <fstream>
 
+enum class Mem_Alloc_Algo {
+    FIRST_FIT,
+    BEST_FIT,
+    WORST_FIT
+};
+
 struct MemBlock {
     int base;
     int size;

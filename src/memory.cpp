@@ -133,14 +133,14 @@ void cmd_mem_stat(const std::vector<std::string>&) {
               << frag_rate * 100 << "%\n";
 }
 
+using mem_find = std::function<MemBlock*(int)>;
+
 MemBlock* find_mem_ff(int req) {
     for (auto& it : Mem) {
         if (it.is_free && it.size >= req) return &it;
     }
     return nullptr;
 }
-
-using mem_find = std::function<MemBlock*(int)>;
 
 MemBlock* find_mem_bf(int req) {
     MemBlock* fit = nullptr;

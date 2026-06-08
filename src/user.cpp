@@ -5,11 +5,13 @@
 #include "process.h"
 #include "user.h"
 #include "persistence.h"
+#include "splash.h"
 
 bool can_access(const PCB* p) {
     return current_user == "root" || sudo_active ||
            p->owner_user == current_user;
 }
+
 bool user_changed = false;
 
 void cmd_sudo(const std::vector<std::string>& args) {
@@ -88,7 +90,10 @@ void first_time_setup() {
     }
 
     users["root"].password = root_psd;
-    
+
+    std::cout << "\033[3J\033[2J\033[H" << std::flush;
+    print_splash_banner();
+
     std::cout << "[OK] Root password set\n";
 }
 
